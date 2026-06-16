@@ -1,0 +1,74 @@
+adaptive_fastlio_mapping:
+  ros__parameters:
+    common:
+      # HKU_MB 为 FAST-LIO 官方示例中的 Livox Avia 数据。
+      lid_topic: "/livox/lidar"
+      imu_topic: "/livox/imu"
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      lidar_type: 1        # Livox CustomMsg / Avia。
+      scan_line: 6
+      timestamp_unit: 2    # CustomMsg 直接使用 offset_time；该参数不参与 Livox 分支换算。
+      scan_rate: 10
+      blind: 4.0
+
+    point_filter_num: 3
+    feature_extract_enable: false
+
+    publish:
+      scan_publish_en: true
+      dense_publish_en: true
+      scan_bodyframe_pub_en: true
+      # 官方 avia.yaml 默认不发布累计 /Laser_map。
+      map_en: true
+
+    runtime_log:
+      summary_interval_frames: 10
+      sensor_debug: false
+
+    mapping:
+      gyr_cov: 0.1
+      acc_cov: 0.1
+      b_gyr_cov: 0.0001
+      b_acc_cov: 0.0001
+      filter_size_surf: 0.5
+      filter_size_map: 0.5
+
+      # 官方 avia.yaml 中的 LiDAR 到 IMU/body 外参。
+      extrinsic_T: [0.04165, 0.02326, -0.0284]
+      extrinsic_R: [1.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0,
+                    0.0, 0.0, 1.0]
+
+      nearest_search_num: 5
+      nearest_sq_dist_threshold: 5.0
+      plane_residual_threshold: 0.1
+      effective_score_threshold: 0.9
+      scan_match_max_iteration: 3
+      scan_match_min_effective_points: 20
+      laser_point_cov: 0.001
+      extrinsic_est_en: false
+      map_init_min_points: 6
+      cube_len: 1000.0
+      det_range: 450.0
+      move_threshold: 1.5
+      local_map_enable: true
+      local_map_delete_enable: true
+
+    adaptive_map:
+      # 先关闭自适应更新，验证基础实现与官方 FAST-LIO2 的结果。
+      enable: true
+      min_effective_points: 200
+      min_range: 4.0
+      max_range: 200.0
+      residual_scale: 2.0
+      residual_robust_sigma: 2.5
+      min_quality_score: 0.92
+      min_effective_ratio: 0.1
+      max_mean_residual: 0.15
+      min_normal_eigen_ratio: 0.02
+      normal_bin_angle_deg: 15.0
+      max_points_per_normal_bin: 30
+      max_novel_points_per_frame: 50

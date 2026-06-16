@@ -1,0 +1,20 @@
+M3DGR Corridor02 Adaptive Map Runtime Comparison
+
+Frames: OFF=2922, ON=2922
+ON degenerate frames: 138 (4.72%)
+Average residual_mean: OFF=0.023510, ON=0.025572
+Final map size: OFF=39376, ON=37201
+Total map added: OFF=134130, ON=130421
+ON total quality rejected: 35876
+ON total direction rejected: 0
+Endpoint displacement: OFF=46.785 m, ON=1.841 m
+
+Residual mean change: 8.77%
+Effective points change: 8.14%
+Total map added change: -2.77%
+Final map size change: -5.52%
+Degenerate trigger counts: effective_points=0, effective_ratio=0, mean_residual=0, normal_ratio=138
+
+Note: endpoint displacement is only a loop-closure consistency reference, not ATE.
+OFF effective_ratio and normal_eigen_ratio are zero because degeneracy statistics
+are currently skipped when adaptive_map is disabled.

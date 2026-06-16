@@ -1,0 +1,50 @@
+/**:
+    ros__parameters:
+        feature_extract_enable: false
+        # 保留完整 VLP-16 点云，避免组织点云按固定索引抽样后仅剩部分扫描线。
+        point_filter_num: 1
+        max_iteration: 3
+        filter_size_surf: 0.5
+        filter_size_map: 0.5
+        cube_side_length: 1000.0
+        runtime_pos_log_enable: false
+        map_file_path: "./geode_urban_tunnel01.pcd"
+
+        common:
+            lid_topic: "/velodyne_points"
+            imu_topic: "/imu/data"
+            time_sync_en: false
+            time_offset_lidar_to_imu: 0.0
+
+        preprocess:
+            lidar_type: 2
+            scan_line: 16
+            scan_rate: 10
+            timestamp_unit: 0
+            blind: 0.5
+
+        mapping:
+            acc_cov: 0.1
+            gyr_cov: 0.1
+            b_acc_cov: 0.0001
+            b_gyr_cov: 0.0001
+            fov_degree: 360.0
+            det_range: 100.0
+            extrinsic_est_en: false
+            # GEODE 官方 alpha_config.yaml 中的 T_IMU_LiDAR。
+            extrinsic_T: [0.0961, -0.1338, 0.3032]
+            extrinsic_R: [0.9999, 0.0049, 0.0153,
+                          -0.0050, 1.0000, 0.0021,
+                          -0.0153, -0.0022, 0.9999]
+
+        publish:
+            path_en: true
+            effect_map_en: false
+            map_en: true
+            scan_publish_en: true
+            dense_publish_en: false
+            scan_bodyframe_pub_en: true
+
+        pcd_save:
+            pcd_save_en: false
+            interval: -1

@@ -1,0 +1,15 @@
+build/
+install/
+log/
+
+__pycache__/
+*.py[cod]
+*.so
+
+.vscode/
+.idea/
+
+*.bag
+*.db3
+*.mcap
+

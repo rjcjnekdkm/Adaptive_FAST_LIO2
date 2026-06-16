@@ -1,0 +1,77 @@
+adaptive_fastlio_mapping:
+  ros__parameters:
+    common:
+      lid_topic: "/livox/lidar"
+      imu_topic: "/livox/imu"
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      # bag/test 为 Livox Mid-360，但其消息类型是 CustomMsg。
+      # 当前代码中 CustomMsg 统一通过 lidar_type=1 的 Livox 分支处理。
+      lidar_type: 1
+      scan_line: 4
+      timestamp_unit: 3
+      scan_rate: 10
+      blind: 0.5
+
+    point_filter_num: 3
+    feature_extract_enable: false
+
+    publish:
+      scan_publish_en: true
+      # 与官方 mid360.yaml 一致，当前帧发布使用体素降采样点云。
+      dense_publish_en: true
+      scan_bodyframe_pub_en: true
+      map_en: true
+
+    runtime_log:
+      summary_interval_frames: 10
+      sensor_debug: false
+
+    mapping:
+      gyr_cov: 0.1
+      acc_cov: 0.1
+      b_gyr_cov: 0.0001
+      b_acc_cov: 0.0001
+      filter_size_surf: 0.5
+      filter_size_map: 0.5
+      # LiDAR 到 IMU/body 的平移外参单位：米
+      extrinsic_T: [-0.011, -0.02329, 0.04412]
+      # LiDAR 到 IMU/body 的旋转外参3x3 矩阵，按行优先展开
+      extrinsic_R: [1.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0,
+                    0.0, 0.0, 1.0]
+      extrinsic_est_en: false
+
+      nearest_search_num: 5             # 最近邻点数量
+      nearest_sq_dist_threshold: 5.0    # 最近邻最远点距离阈值
+      plane_residual_threshold: 0.1     # 官方 FAST-LIO2 局部平面拟合阈值
+      effective_score_threshold: 0.9    # 有效约束分数阈值
+      scan_match_max_iteration: 3
+      scan_match_min_effective_points: 20
+      laser_point_cov: 0.001
+      
+      map_init_min_points: 6
+      cube_len: 1000.0
+      det_range: 100.0
+      move_threshold: 1.5
+      # 与官方 FAST-LIO2 一致，始终维护滑动局部地图并删除移出 cube 的 ikd-tree 点。
+      local_map_enable: true
+      local_map_delete_enable: true
+
+    adaptive_map:
+      enable: false
+      min_effective_points: 200
+      min_range: 0.5
+      max_range: 80.0
+      residual_scale: 2.0
+      residual_robust_sigma: 2.5
+      # 高于 FAST-LIO2 的有效约束门限 0.9，真正形成额外的入图质量筛选。
+      min_quality_score: 0.92
+      min_effective_ratio: 0.1
+      max_mean_residual: 0.15
+      min_normal_eigen_ratio: 0.02
+      normal_bin_angle_deg: 15.0
+      max_points_per_normal_bin: 30
+      max_novel_points_per_frame: 50
