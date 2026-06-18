@@ -2069,7 +2069,9 @@ public:
             std::cout << "Subscribe standard PointCloud2." << std::endl;
         }
 
-        sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(imu_topic,10,imu_cbk);
+        auto imu_qos = rclcpp::SensorDataQoS();
+        imu_qos.keep_last(2000);
+        sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(imu_topic, imu_qos, imu_cbk);
 
        
         pub_cloud_body_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body",10);

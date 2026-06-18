@@ -9,6 +9,10 @@
 !/src/adaptive_fast_lio2/**
 !/src/FAST_LIO/
 !/src/FAST_LIO/**
+!/src/LIO-SAM/
+!/src/LIO-SAM/**
+!/scripts/
+!/scripts/**
 
 build/
 install/

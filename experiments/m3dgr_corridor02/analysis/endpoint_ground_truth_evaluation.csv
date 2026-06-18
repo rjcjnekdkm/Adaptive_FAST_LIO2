@@ -1,3 +1,0 @@
-experiment,frames,estimated_tx,estimated_ty,estimated_tz,gt_tx,gt_ty,gt_tz,translation_endpoint_error_m,rotation_endpoint_error_deg
-adaptive_off_runtime,2922,41.120902399,-2.296086031,22.19533966,0.18465674,-0.00167589,-0.08814141,46.664698168381726,
-adaptive_runtime,2922,0.447692069,0.79063023,1.601730707,0.18465674,-0.00167589,-0.08814141,1.8848353625464624,

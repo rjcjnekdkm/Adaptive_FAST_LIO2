@@ -74,4 +74,4 @@ adaptive_fastlio_mapping:
       sensor_debug: false
       csv_enable: false
       csv_append: false
-      csv_path: "/home/romi/ros2_ws/experiments/m3dgr_corridor02/results/adaptive_off_runtime.csv"
+      csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/m3dgr_corridor02/results/adaptive_off_runtime.csv"

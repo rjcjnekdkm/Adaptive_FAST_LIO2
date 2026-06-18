@@ -75,4 +75,4 @@ adaptive_fastlio_mapping:
       sensor_debug: true
       csv_enable: false
       csv_append: false
-      csv_path: "/home/romi/ros2_ws/experiments/newer_college/results/adaptive_runtime.csv"
+      csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/newer_college/results/adaptive_runtime.csv"

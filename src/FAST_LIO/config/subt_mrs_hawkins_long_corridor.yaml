@@ -1,0 +1,51 @@
+/**:
+    ros__parameters:
+        feature_extract_enable: false
+        # Keep all VLP-16 points; the cloud is already sparse.
+        point_filter_num: 1
+        max_iteration: 3
+        filter_size_surf: 0.5
+        filter_size_map: 0.5
+        cube_side_length: 1000.0
+        runtime_pos_log_enable: false
+        map_file_path: "./subt_mrs_hawkins_long_corridor.pcd"
+
+        common:
+            lid_topic: "/velodyne_points"
+            imu_topic: "/imu/data"
+            time_sync_en: false
+            time_offset_lidar_to_imu: 0.0
+
+        preprocess:
+            lidar_type: 2
+            scan_line: 16
+            scan_rate: 10
+            # velodyne_pointcloud publishes per-point time in seconds.
+            timestamp_unit: 0
+            blind: 0.5
+
+        mapping:
+            acc_cov: 0.1
+            gyr_cov: 0.1
+            b_acc_cov: 0.0001
+            b_gyr_cov: 0.0001
+            fov_degree: 360.0
+            det_range: 100.0
+            extrinsic_est_en: false
+            # SubT_MRS_Hawkins_Long_Corridor_RC_Extrinsics.yaml laser_to_imu.
+            extrinsic_T: [0.08, 0.029, 0.03]
+            extrinsic_R: [0.999212900, -0.000519121, 0.004000000,
+                          0.000516111, 0.999218492, -0.000939132,
+                         -0.004000000, 0.000802565, 0.999993652]
+
+        publish:
+            path_en: true
+            effect_map_en: false
+            map_en: true
+            scan_publish_en: true
+            dense_publish_en: true
+            scan_bodyframe_pub_en: true
+
+        pcd_save:
+            pcd_save_en: false
+            interval: -1

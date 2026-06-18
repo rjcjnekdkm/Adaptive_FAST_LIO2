@@ -1,0 +1,4 @@
+method,trajectory_duration_s,path_length_m,path_length_abs_error_m,path_length_error_pct,max_estimated_speed_mps,ate_rmse_m,ate_mean_m,ate_median_m,ate_max_m,rpe_10m_rmse_m,rpe_10m_mean_m,rpe_10m_median_m,rpe_10m_max_m,run_status
+adaptive_fast_lio2,274.524191,585.514102,6.340939,1.094826,3.735054,1.511173,1.263507,0.906770,3.363715,0.240095,0.181876,0.122955,1.110301,complete_stable
+fast_lio,276.440402,595.835452,16.662290,2.876910,14.366164,17.995523,14.540962,9.835601,41.223188,0.580166,0.406773,0.238433,2.723373,complete_with_large_drift
+lio_sam,276.339604,583.543189,4.370027,0.754529,4.057130,1.682408,1.428811,1.082094,3.909103,0.415787,0.342045,0.305108,2.067499,complete_stable

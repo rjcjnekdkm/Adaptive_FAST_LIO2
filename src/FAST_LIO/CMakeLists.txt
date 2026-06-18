@@ -113,8 +113,19 @@ endif()
 
 ament_target_dependencies(fastlio_mapping ${dependencies})
 
+add_executable(fastlio_runtime_recorder src/fastlio_runtime_recorder.cpp)
+ament_target_dependencies(fastlio_runtime_recorder
+  rclcpp
+  nav_msgs
+  sensor_msgs
+)
+
 # ---------------- Install --------------- #
 install(TARGETS fastlio_mapping
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS fastlio_runtime_recorder
   DESTINATION lib/${PROJECT_NAME}
 )
 

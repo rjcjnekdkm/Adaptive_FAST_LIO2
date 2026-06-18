@@ -1,0 +1,55 @@
+/**:
+    ros__parameters:
+        feature_extract_enable: false
+        # M2DGR-plus street1 is Robosense 16 at 5 Hz. Keep all points because
+        # the 16-line cloud is already sparse.
+        point_filter_num: 1
+        max_iteration: 3
+        filter_size_surf: 0.5
+        filter_size_map: 0.5
+        cube_side_length: 1000.0
+        runtime_pos_log_enable: false
+        map_file_path: "./m2dgr_plus_street1.pcd"
+
+        common:
+            lid_topic: "/rslidar_points"
+            imu_topic: "/imu"
+            time_sync_en: false
+            time_offset_lidar_to_imu: 0.0
+
+        preprocess:
+            lidar_type: 2
+            scan_line: 16
+            scan_rate: 5
+            # Converted PointCloud2 currently has x/y/z/intensity only. Without
+            # per-point time, this value is effectively unused.
+            timestamp_unit: 2
+            blind: 0.5
+
+        mapping:
+            # M2DGR-plus calibration.txt IMU noise parameters.
+            acc_cov: 0.012374091609523514
+            gyr_cov: 0.0030032654435730201
+            b_acc_cov: 0.00019218003442176448
+            b_gyr_cov: 0.000054692100664858005
+            fov_degree: 360.0
+            det_range: 100.0
+            extrinsic_est_en: false
+            # FAST-LIO expects T_imu_lidar: p_imu = R_imu_lidar * p_lidar + t_imu_lidar.
+            # Derived from M2DGR-plus calibration.txt imu2wheel and lidar2wheel.
+            extrinsic_T: [0.13, 0.0, -1.03]
+            extrinsic_R: [1.0, 0.0, 0.0,
+                          0.0, -1.0, 0.0,
+                          0.0, 0.0, -1.0]
+
+        publish:
+            path_en: true
+            effect_map_en: false
+            map_en: true
+            scan_publish_en: true
+            dense_publish_en: true
+            scan_bodyframe_pub_en: true
+
+        pcd_save:
+            pcd_save_en: false
+            interval: -1

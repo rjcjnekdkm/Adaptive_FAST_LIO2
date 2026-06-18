@@ -1,5 +1,6 @@
 #include "adaptive_fast_lio2/adaptive_runtime_logger.hpp"
 
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 
@@ -28,6 +29,21 @@ void AdaptiveRuntimeLogger::configure(bool enable, const std::string &path, bool
     {
         std::cerr << "[CSV] runtime_log.csv_enable=true but csv_path is empty. Disable CSV logging." << std::endl;
         return;
+    }
+
+    const std::filesystem::path csv_path(path_);
+    const auto parent_path = csv_path.parent_path();
+    if (!parent_path.empty())
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(parent_path, ec);
+        if (ec)
+        {
+            std::cerr << "[CSV] failed to create directory: "
+                      << parent_path.string()
+                      << " (" << ec.message() << ")" << std::endl;
+            return;
+        }
     }
 
     // append=false 用于独立实验：覆盖旧结果并写入新表头；

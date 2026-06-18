@@ -21,6 +21,9 @@ def generate_launch_description():
     config_file = LaunchConfiguration('config_file')
     rviz_use = LaunchConfiguration('rviz')
     rviz_cfg = LaunchConfiguration('rviz_cfg')
+    runtime_recorder = LaunchConfiguration('runtime_recorder')
+    runtime_csv_path = LaunchConfiguration('runtime_csv_path')
+    runtime_csv_append = LaunchConfiguration('runtime_csv_append')
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         'use_sim_time', default_value='false',
@@ -42,6 +45,23 @@ def generate_launch_description():
         'rviz_cfg', default_value=default_rviz_config_path,
         description='RViz config file path'
     )
+    declare_runtime_recorder_cmd = DeclareLaunchArgument(
+        'runtime_recorder', default_value='true',
+        description='Start the external runtime recorder'
+    )
+    declare_runtime_csv_path_cmd = DeclareLaunchArgument(
+        'runtime_csv_path',
+        default_value=(
+            '/home/romi/Adaptive_FAST_LIO2/experiments/'
+            'subt_mrs_hawkins_long_corridor/results/'
+            'fastlio_runtime_external.csv'
+        ),
+        description='FAST-LIO runtime CSV output path'
+    )
+    declare_runtime_csv_append_cmd = DeclareLaunchArgument(
+        'runtime_csv_append', default_value='false',
+        description='Append to the runtime CSV instead of truncating it'
+    )
 
     fast_lio_node = Node(
         package='fast_lio',
@@ -56,6 +76,18 @@ def generate_launch_description():
         arguments=['-d', rviz_cfg],
         condition=IfCondition(rviz_use)
     )
+    runtime_recorder_node = Node(
+        package='fast_lio',
+        executable='fastlio_runtime_recorder',
+        name='fastlio_runtime_recorder',
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'csv_path': runtime_csv_path,
+            'csv_append': runtime_csv_append,
+        }],
+        condition=IfCondition(runtime_recorder),
+        output='screen'
+    )
 
     ld = LaunchDescription()
     ld.add_action(declare_use_sim_time_cmd)
@@ -63,8 +95,12 @@ def generate_launch_description():
     ld.add_action(decalre_config_file_cmd)
     ld.add_action(declare_rviz_cmd)
     ld.add_action(declare_rviz_config_path_cmd)
+    ld.add_action(declare_runtime_recorder_cmd)
+    ld.add_action(declare_runtime_csv_path_cmd)
+    ld.add_action(declare_runtime_csv_append_cmd)
 
     ld.add_action(fast_lio_node)
+    ld.add_action(runtime_recorder_node)
     ld.add_action(rviz_node)
 
     return ld
