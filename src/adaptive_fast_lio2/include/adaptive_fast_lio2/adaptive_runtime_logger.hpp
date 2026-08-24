@@ -28,6 +28,8 @@ struct RuntimeLogRow
     // 当前实验是否启用 adaptive_map，以及本帧是否被判定为退化帧。
     bool adaptive_map = false;
     bool degenerate = false;
+    int degeneracy_mode = 0;
+    bool window_ready = false;
 
     // 当前滤波状态在 camera_init/world 坐标系下的位置。
     double pos_x = 0.0;
@@ -49,6 +51,14 @@ struct RuntimeLogRow
     double residual_median = 0.0;
     double residual_mad = 0.0;
     double normal_eigen_ratio = 0.0;
+    double condition_number = 1.0;
+    double window_degenerate_ratio = 0.0;
+    double window_normal_eigen_ratio_mean = 0.0;
+    double window_residual_cv = 0.0;
+    double window_path_length = 0.0;
+    double window_yaw_change = 0.0;
+    double window_condition_number_mean = 1.0;
+    int window_recent_degenerate_streak = 0;
 
     // 本帧最终入图数量及其组成。insert_ratio = map_added / downsampled_points。
     std::size_t map_added = 0;

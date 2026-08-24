@@ -14,6 +14,7 @@ add_compile_options(-O3)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(livox_ros_driver2 REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -21,6 +22,7 @@ find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common io filters kdtree)
+find_package(GTSAM REQUIRED)
 find_package(Threads REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -44,6 +46,7 @@ add_executable(adaptive_fastlio_mapping
 ament_target_dependencies(adaptive_fastlio_mapping
   rclcpp
   sensor_msgs
+  std_msgs
   livox_ros_driver2
   pcl_conversions
   nav_msgs
@@ -60,7 +63,26 @@ target_link_libraries(adaptive_fastlio_mapping
   Threads::Threads
 )
 
-install(TARGETS adaptive_fastlio_mapping
+add_executable(adaptive_degenerate_backend
+  src/adaptive_degenerate_backend.cpp
+)
+
+ament_target_dependencies(adaptive_degenerate_backend
+  rclcpp
+  sensor_msgs
+  std_msgs
+  nav_msgs
+  geometry_msgs
+  pcl_conversions
+)
+
+target_link_libraries(adaptive_degenerate_backend
+  ${PCL_LIBRARIES}
+  gtsam
+  Eigen3::Eigen
+)
+
+install(TARGETS adaptive_fastlio_mapping adaptive_degenerate_backend
   DESTINATION lib/${PROJECT_NAME}
 )
 

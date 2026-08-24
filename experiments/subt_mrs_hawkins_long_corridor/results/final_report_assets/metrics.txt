@@ -1,0 +1,20 @@
+Ours Frontend + Degenerate Backend
+
+APE:
+max    3.039653
+mean   1.075757
+median 0.777557
+min    0.182821
+rmse   1.275174
+std    0.684702
+
+RPE_10m:
+max    1.533367
+mean   0.398206
+median 0.289763
+min    0.051927
+rmse   0.514308
+std    0.325492
+
+Accepted loops:
+5

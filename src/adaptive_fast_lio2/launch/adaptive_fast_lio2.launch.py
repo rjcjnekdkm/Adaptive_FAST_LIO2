@@ -20,6 +20,7 @@ def generate_launch_description():
     config_file = LaunchConfiguration("config_file")
     rviz_use = LaunchConfiguration("rviz")
     rviz_cfg = LaunchConfiguration("rviz_cfg")
+    backend_use = LaunchConfiguration("backend")
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
@@ -51,6 +52,12 @@ def generate_launch_description():
         description="RViz config file path"
     )
 
+    declare_backend_cmd = DeclareLaunchArgument(
+        "backend",
+        default_value="false",
+        description="Run degenerate-aware loop backend if true"
+    )
+
     adaptive_lio_node = Node(
         package="adaptive_fast_lio2",
         executable="adaptive_fastlio_mapping",
@@ -69,14 +76,27 @@ def generate_launch_description():
         condition=IfCondition(rviz_use)
     )
 
+    adaptive_backend_node = Node(
+        package="adaptive_fast_lio2",
+        executable="adaptive_degenerate_backend",
+        name="adaptive_degenerate_backend",
+        parameters=[
+            {"use_sim_time": use_sim_time}
+        ],
+        output="screen",
+        condition=IfCondition(backend_use)
+    )
+
     ld = LaunchDescription()
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_config_path_cmd)
     ld.add_action(declare_config_file_cmd)
     ld.add_action(declare_rviz_cmd)
     ld.add_action(declare_rviz_config_path_cmd)
+    ld.add_action(declare_backend_cmd)
 
     ld.add_action(adaptive_lio_node)
+    ld.add_action(adaptive_backend_node)
     ld.add_action(rviz_node)
 
     return ld

@@ -56,19 +56,19 @@ adaptive_fastlio_mapping:
 
     adaptive_map:
       # 首次运行先关闭自适应入图，确认 Ouster 输入、外参和轨迹均正常。
-      enable: false
-      min_effective_points: 200
-      min_range: 0.65
-      max_range: 150.0
-      residual_scale: 2.0
-      residual_robust_sigma: 2.5
-      min_quality_score: 0.92
-      min_effective_ratio: 0.1
-      max_mean_residual: 0.15
-      min_normal_eigen_ratio: 0.02
-      normal_bin_angle_deg: 15.0
-      max_points_per_normal_bin: 30
-      max_novel_points_per_frame: 50
+      enable: false                         # 是否启用 idea 模块的退化感知地图更新；false 时尽量保持原 FAST-LIO2 入图行为。
+      min_effective_points: 200             # 单帧有效点到面约束数量下限，低于该值认为当前帧约束不足。
+      min_range: 0.65                       # 允许入图的最小 LiDAR 量程，过滤过近点和盲区附近不稳定点。
+      max_range: 150.0                      # 允许入图的最大 LiDAR 量程，过滤远距离噪声和稀疏弱约束点。
+      residual_scale: 2.0                   # 单点残差阈值相对当前帧平均残差的放大系数。
+      residual_robust_sigma: 2.5            # 稳健残差阈值系数，用 median + sigma * 1.4826 * MAD 抑制异常残差。
+      min_quality_score: 0.92               # 单点 FAST-LIO2 风格质量分数下限，低质量匹配点不允许入图。
+      min_effective_ratio: 0.1              # 有效约束点占下采样点数的比例下限，用于单帧退化判断。
+      max_mean_residual: 0.15               # 当前帧平均点到面残差上限，超过则认为匹配质量差。
+      min_normal_eigen_ratio: 0.02          # 法向信息矩阵最小/最大特征值比例下限，过低表示约束方向单一。
+      normal_bin_angle_deg: 15.0            # 法向方向分箱角度，退化帧中用于限制重复方向点入图。
+      max_points_per_normal_bin: 30         # 退化帧内每个法向方向分箱最多允许写入地图的点数。
+      max_novel_points_per_frame: 50        # 退化帧内地图未知区域 novel points 的帧级入图上限。
 
     runtime_log:
       summary_interval_frames: 10
