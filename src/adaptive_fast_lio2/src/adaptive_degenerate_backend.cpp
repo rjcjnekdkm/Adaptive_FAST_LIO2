@@ -285,6 +285,16 @@ public:
         loop_submap_leaf_size_ = declare_parameter<double>("loop_submap_leaf_size", 0.5);
         // 关键帧点云体素下采样大小。越大越快但几何细节越少。
         keyframe_leaf_size_ = declare_parameter<double>("keyframe_leaf_size", 0.4);
+        // 是否发布后端优化地图。只发布 ROS topic，不保存 PCD 文件。
+        // 综合最优实验默认关闭该可视化输出，避免周期性拼接全局地图影响在线优化节奏；
+        // 需要 RViz 查看后端地图时，可手动改为 true 或通过参数开启。
+        publish_optimized_map_ = declare_parameter<bool>("publish_optimized_map", false);
+        // 优化地图发布间隔。拼接全部关键帧点云有开销，因此默认每 10 个关键帧发布一次。
+        optimized_map_publish_interval_ =
+            declare_parameter<int>("optimized_map_publish_interval", 10);
+        // 后端优化地图体素下采样大小。仅影响发布出来的可视化/对比地图，不影响优化本身。
+        optimized_map_leaf_size_ =
+            declare_parameter<double>("optimized_map_leaf_size", 0.5);
         // 简化 ScanContext 描述子参数：rings × sectors 的极坐标网格。
         scan_context_rings_ = declare_parameter<int>("scan_context_rings", 20);
         scan_context_sectors_ = declare_parameter<int>("scan_context_sectors", 60);
@@ -311,9 +321,15 @@ public:
             "/adaptive_frontend/degeneracy_info", 100,
             std::bind(&AdaptiveDegenerateBackend::degeneracyHandler, this, std::placeholders::_1));
 
-        // 后端优化结果。当前先发布轨迹；后续可以继续增加 optimized map 发布/保存。
+        // 后端优化轨迹。
         pub_optimized_path_ =
             create_publisher<nav_msgs::msg::Path>("/adaptive_backend/optimized_path", 10);
+        // 后端优化地图：使用 optimized_pose_i × keyframe_cloud_i 拼接得到。
+        // 使用 transient_local，让 RViz/ros2 topic echo 在地图发布之后再订阅时，
+        // 也能收到最近一次发布的地图，避免“错过低频地图发布后看起来没有话题输出”。
+        pub_optimized_map_ = create_publisher<sensor_msgs::msg::PointCloud2>(
+            "/adaptive_backend/optimized_map",
+            rclcpp::QoS(1).reliable().transient_local());
 
         // iSAM2 是增量式 pose graph 优化器，适合在线逐关键帧加入因子。
         gtsam::ISAM2Params params;
@@ -1066,12 +1082,9 @@ private:
     /**
      * @brief 执行 iSAM2 增量优化，并发布优化后的关键帧轨迹。
      *
-     * 当前版本只发布 optimized path，不发布最终 optimized map。
-     * 后续若要生成最终地图，可在这里或单独函数中：
-     *
-     *     optimized_pose_i × keyframe_cloud_i
-     *
-     * 将所有关键帧点云重新拼接、下采样后发布/保存。
+     * 当前版本发布两类结果：
+     * - optimized path：优化后的关键帧轨迹；
+     * - optimized map：用优化后位姿重新拼接关键帧点云得到的后端地图。
      */
     void optimizeAndPublish()
     {
@@ -1106,7 +1119,86 @@ private:
         }
 
         pub_optimized_path_->publish(path);
+        publishOptimizedMapIfNeeded();
         writeOptimizedTum();
+    }
+
+    /**
+     * @brief 按优化后的关键帧位姿发布后端点云地图。
+     *
+     * 对每个关键帧 i：
+     *
+     *     p_world = T_world_i^opt * p_i
+     *
+     * 其中 p_i 是保存在关键帧局部坐标系下的点云，
+     * T_world_i^opt 是 pose graph 优化后的关键帧位姿。
+     *
+     * 注意：
+     * - 这里仅发布 /adaptive_backend/optimized_map；
+     * - 不保存 PCD；
+     * - 为降低开销，默认每 optimized_map_publish_interval_ 个关键帧发布一次。
+     */
+    void publishOptimizedMapIfNeeded()
+    {
+        if (!publish_optimized_map_ || !pub_optimized_map_)
+        {
+            return;
+        }
+        if (keyframes_.empty())
+        {
+            return;
+        }
+
+        const int interval = std::max(1, optimized_map_publish_interval_);
+        const bool should_publish =
+            keyframes_.size() <= 2 ||
+            keyframes_.size() % static_cast<size_t>(interval) == 0 ||
+            loop_index_container_.size() != last_published_loop_count_;
+        if (!should_publish)
+        {
+            return;
+        }
+
+        Cloud::Ptr global_map(new Cloud());
+        for (const auto &kf : keyframes_)
+        {
+            if (!kf.cloud || kf.cloud->empty())
+            {
+                continue;
+            }
+
+            Cloud transformed;
+            pcl::transformPointCloud(
+                *kf.cloud,
+                transformed,
+                kf.optimized_pose.matrix().cast<float>());
+            *global_map += transformed;
+        }
+
+        if (global_map->empty())
+        {
+            return;
+        }
+
+        Cloud::Ptr downsampled(new Cloud());
+        pcl::VoxelGrid<PointType> voxel;
+        const float leaf = static_cast<float>(std::max(0.05, optimized_map_leaf_size_));
+        voxel.setLeafSize(leaf, leaf, leaf);
+        voxel.setInputCloud(global_map);
+        voxel.filter(*downsampled);
+
+        sensor_msgs::msg::PointCloud2 msg;
+        pcl::toROSMsg(*downsampled, msg);
+        msg.header.stamp = now();
+        msg.header.frame_id = "camera_init";
+        pub_optimized_map_->publish(msg);
+        last_published_map_keyframes_ = keyframes_.size();
+        last_published_loop_count_ = loop_index_container_.size();
+
+        RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 3000,
+            "optimized map published: keyframes=%zu, points=%zu, loops=%zu",
+            keyframes_.size(), downsampled->size(), loop_index_container_.size());
     }
 
 private:
@@ -1124,6 +1216,8 @@ private:
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr sub_degeneracy_;
     // 后端优化轨迹发布器。
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_optimized_path_;
+    // 后端优化地图发布器。
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_optimized_map_;
 
     // GTSAM 增量优化器与待加入的新因子/新初值。
     std::unique_ptr<gtsam::ISAM2> isam_;
@@ -1153,6 +1247,9 @@ private:
     int loop_submap_search_num_ = 10;
     double loop_submap_leaf_size_ = 0.5;
     double keyframe_leaf_size_ = 0.4;
+    bool publish_optimized_map_ = false;
+    int optimized_map_publish_interval_ = 10;
+    double optimized_map_leaf_size_ = 0.5;
     int scan_context_rings_ = 20;
     int scan_context_sectors_ = 60;
     double scan_context_max_radius_ = 80.0;
@@ -1161,6 +1258,8 @@ private:
     std::string backend_tum_path_;
     std::string backend_loop_csv_path_;
     std::ofstream loop_csv_;
+    size_t last_published_map_keyframes_ = 0;
+    size_t last_published_loop_count_ = 0;
 };
 
 int main(int argc, char **argv)

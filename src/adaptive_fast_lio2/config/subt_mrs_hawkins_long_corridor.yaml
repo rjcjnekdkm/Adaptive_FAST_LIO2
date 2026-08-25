@@ -19,10 +19,10 @@ adaptive_fastlio_mapping:
     feature_extract_enable: false
 
     publish:
-      scan_publish_en: true
-      dense_publish_en: true
-      scan_bodyframe_pub_en: true
-      map_en: true
+      scan_publish_en: true               # 发布 /cloud_registered，用于 RViz 查看前端注册点云。
+      dense_publish_en: true              # 发布 dense cloud，可视化模式开启。
+      scan_bodyframe_pub_en: true         # 必须保留：后端订阅 /cloud_registered_body 保存关键帧点云并做 ICP。
+      map_en: true                        # 发布前端 /Laser_map 和 /ikdtree_map，可与后端优化地图对比。
 
     mapping:
       gyr_cov: 0.1
