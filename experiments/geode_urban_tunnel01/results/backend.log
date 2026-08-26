@@ -1,0 +1,20 @@
+getifaddrs: Operation not permitted
+getifaddrs: Operation not permitted
+getifaddrs: Operation not permitted
+[37;1m2026-08-25 16:03:00.185 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[37;1m2026-08-25 16:03:00.185 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[INFO] [1787644980.249580431] [adaptive_degenerate_backend]: Backend logs -> TUM: /home/romi/Adaptive_FAST_LIO2/experiments/geode_urban_tunnel01/results/adaptive_backend_optimized.tum, loops: /home/romi/Adaptive_FAST_LIO2/experiments/geode_urban_tunnel01/results/adaptive_backend_loops.csv
+[INFO] [1787644980.249818207] [adaptive_degenerate_backend]: Adaptive degenerate backend started. Input: /Odometry, /cloud_registered_body, /adaptive_frontend/degeneracy_info
+[INFO] [1787644986.053611737] [adaptive_degenerate_backend]: backend keyframes=1, latest_mode=0, D=0.00
+[INFO] [1787644992.632133661] [adaptive_degenerate_backend]: backend keyframes=2, latest_mode=0, D=0.00
+[INFO] [1787644995.153596206] [adaptive_degenerate_backend]: backend keyframes=4, latest_mode=0, D=0.00
+[INFO] [1787644997.233313204] [adaptive_degenerate_backend]: backend keyframes=6, latest_mode=0, D=0.00
+[INFO] [1787645000.426287356] [adaptive_degenerate_backend]: backend keyframes=9, latest_mode=0, D=0.00
+[INFO] [1787645002.883038999] [adaptive_degenerate_backend]: backend keyframes=14, latest_mode=0, D=0.00
+[INFO] [1787645004.886522028] [adaptive_degenerate_backend]: backend keyframes=17, latest_mode=0, D=0.00
+[INFO] [1787645007.558588517] [adaptive_degenerate_backend]: backend keyframes=21, latest_mode=0, D=0.00
+[INFO] [1787645009.940077567] [adaptive_degenerate_backend]: backend keyframes=24, latest_mode=0, D=0.00
+[INFO] [1787645012.136018236] [adaptive_degenerate_backend]: backend keyframes=28, latest_mode=0, D=0.00
+[INFO] [1787645014.138230078] [adaptive_degenerate_backend]: backend keyframes=33, latest_mode=0, D=0.00
+[INFO] [1787645016.360817774] [adaptive_degenerate_backend]: backend keyframes=38, latest_mode=0, D=0.00
+[INFO] [1787645018.822098093] [adaptive_degenerate_backend]: backend keyframes=43, latest_mode=0, D=0.00

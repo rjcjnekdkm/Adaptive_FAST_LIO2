@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <deque>
 #include <fstream>
 #include <iomanip>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -217,6 +219,7 @@ struct KeyFrame
     DegeneracyInfo degeneracy;
     std::vector<float> scan_context;
 };
+
 }  // namespace
 
 class AdaptiveDegenerateBackend : public rclcpp::Node
@@ -246,6 +249,11 @@ public:
         keyframe_yaw_ = declare_parameter<double>("keyframe_yaw", 0.25);
         // odometry 与点云时间戳允许的最大差值。超过该阈值说明当前缓存不同步，跳过。
         cloud_time_tolerance_ = declare_parameter<double>("cloud_time_tolerance", 0.20);
+        // 点云和退化消息的时间同步队列长度，过小可能找不到对应消息。
+        const auto sync_queue_param =
+            declare_parameter<int>("sync_queue_size", 200);
+        sync_queue_size_ = static_cast<size_t>(std::max<int64_t>(
+            20, sync_queue_param));
         // 回环检索时排除最近 N 个关键帧，避免把相邻帧误当成回环。
         recent_exclusion_num_ = declare_parameter<int>("recent_exclusion_num", 30);
         // 每个当前关键帧最多尝试多少个 ScanContext 候选。
@@ -253,6 +261,16 @@ public:
         // 但会引入更多通过局部门控却拉坏全局/局部轨迹的回环。
         // 若后续换数据集或进一步增强候选验证，可通过参数改大该值重新实验。
         loop_candidate_top_k_ = declare_parameter<int>("loop_candidate_top_k", 1);
+        // 回环冷却：同一当前关键帧附近不重复添加回环。
+        // 原逻辑只禁止完全相同的 current_id；当前默认扩大到相邻关键帧。
+        loop_current_cooldown_keyframes_ =
+            declare_parameter<int>("loop_current_cooldown_keyframes", 10);
+        // 回环冷却：同一候选关键帧附近不重复添加回环，抑制长走廊中的重复匹配。
+        loop_candidate_cooldown_keyframes_ =
+            declare_parameter<int>("loop_candidate_cooldown_keyframes", 20);
+        // 回环对冷却：当前帧和候选帧都相近时，视为同一局部回环事件。
+        loop_pair_cooldown_keyframes_ =
+            declare_parameter<int>("loop_pair_cooldown_keyframes", 30);
         // ScanContext 余弦距离阈值，越小表示两个描述子越相似。
         scan_context_distance_threshold_ =
             declare_parameter<double>("scan_context_distance_threshold", 0.18);
@@ -467,15 +485,19 @@ private:
     }
 
     /**
-     * @brief 缓存最新点云。
+     * @brief 缓存点云消息，供 odometry 按时间戳寻找最近帧。
      *
-     * 这里不立即建关键帧，因为关键帧还需要和 odometry 以及退化状态配对。
-     * 真正的关键帧创建在 odomHandler() 中触发。
+     * 不能只保存 latest cloud：当回放速率或回调调度变化时，最新点云可能
+     * 已经跨过当前 odometry，导致关键帧点云和位姿错配。
      */
     void cloudHandler(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
         std::lock_guard<std::mutex> lock(mtx_);
-        latest_cloud_msg_ = msg;
+        cloud_queue_.push_back(msg);
+        while (cloud_queue_.size() > sync_queue_size_)
+        {
+            cloud_queue_.pop_front();
+        }
     }
 
     /**
@@ -502,25 +524,31 @@ private:
             return;
         }
 
+        DegeneracyInfo info;
+        info.time = msg->data[0];
+        info.mode = static_cast<int>(std::round(msg->data[1]));
+        info.static_degenerate = msg->data[2] > 0.5;
+        info.effective_ratio = msg->data[3];
+        info.residual_mean = msg->data[4];
+        info.normal_eigen_ratio = msg->data[5];
+        info.condition_number = msg->data[6];
+        info.window_degenerate_ratio = msg->data[7];
+        info.window_condition_number_mean = msg->data[12];
+        info.insert_ratio = msg->data[14];
+
         std::lock_guard<std::mutex> lock(mtx_);
-        latest_degeneracy_.time = msg->data[0];
-        latest_degeneracy_.mode = static_cast<int>(std::round(msg->data[1]));
-        latest_degeneracy_.static_degenerate = msg->data[2] > 0.5;
-        latest_degeneracy_.effective_ratio = msg->data[3];
-        latest_degeneracy_.residual_mean = msg->data[4];
-        latest_degeneracy_.normal_eigen_ratio = msg->data[5];
-        latest_degeneracy_.condition_number = msg->data[6];
-        latest_degeneracy_.window_degenerate_ratio = msg->data[7];
-        latest_degeneracy_.window_condition_number_mean = msg->data[12];
-        latest_degeneracy_.insert_ratio = msg->data[14];
-        has_degeneracy_ = true;
+        degeneracy_queue_.push_back(info);
+        while (degeneracy_queue_.size() > sync_queue_size_)
+        {
+            degeneracy_queue_.pop_front();
+        }
     }
 
     /**
-     * @brief 里程计回调，负责同步最新点云与退化信息，并尝试创建关键帧。
+     * @brief 里程计回调，按时间戳同步点云与退化信息，并尝试创建关键帧。
      *
      * 后端以 odometry 为主触发，是因为关键帧必须首先有前端位姿。
-     * 如果点云和 odometry 时间差太大，说明缓存未同步，直接跳过，避免错配。
+     * 如果最近点云和 odometry 时间差太大，说明缓存未同步，直接跳过，避免错配。
      */
     void odomHandler(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
@@ -528,29 +556,62 @@ private:
         DegeneracyInfo degeneracy;
         {
             std::lock_guard<std::mutex> lock(mtx_);
-            if (!latest_cloud_msg_)
+            if (cloud_queue_.empty())
             {
                 return;
             }
 
-            const double dt =
-                std::abs((rclcpp::Time(msg->header.stamp) -
-                          rclcpp::Time(latest_cloud_msg_->header.stamp))
-                             .seconds());
-            if (dt > cloud_time_tolerance_)
+            const double odom_time = rclcpp::Time(msg->header.stamp).seconds();
+            auto matched_cloud = cloud_queue_.end();
+            double matched_cloud_time = -std::numeric_limits<double>::infinity();
+            for (auto it = cloud_queue_.begin(); it != cloud_queue_.end(); ++it)
+            {
+                const double cloud_time = rclcpp::Time((*it)->header.stamp).seconds();
+                // 因果匹配：不允许使用 odometry 之后的未来点云，也不重复使用
+                // 上一次已经匹配过的点云。
+                if (cloud_time <= odom_time &&
+                    cloud_time > last_matched_cloud_time_ &&
+                    cloud_time > matched_cloud_time)
+                {
+                    matched_cloud = it;
+                    matched_cloud_time = cloud_time;
+                }
+            }
+            if (matched_cloud == cloud_queue_.end() ||
+                odom_time - matched_cloud_time > cloud_time_tolerance_)
             {
                 return;
             }
 
-            pcl::fromROSMsg(*latest_cloud_msg_, *cloud);
+            pcl::fromROSMsg(**matched_cloud, *cloud);
             if (cloud->empty())
             {
                 return;
             }
+            last_matched_cloud_time_ = matched_cloud_time;
+            // 已经使用过的点云不再参与后续匹配，保证点云时间单调递增且单次使用。
+            cloud_queue_.erase(cloud_queue_.begin(), std::next(matched_cloud));
 
-            if (has_degeneracy_)
+            if (!degeneracy_queue_.empty())
             {
-                degeneracy = latest_degeneracy_;
+                auto matched_degeneracy = degeneracy_queue_.end();
+                double matched_degeneracy_time =
+                    -std::numeric_limits<double>::infinity();
+                for (auto it = degeneracy_queue_.begin(); it != degeneracy_queue_.end(); ++it)
+                {
+                    // 退化状态同样只允许使用当前 odometry 之前的状态，
+                    // 但允许多个关键帧复用最近一条状态。
+                    if (it->time <= odom_time && it->time > matched_degeneracy_time)
+                    {
+                        matched_degeneracy = it;
+                        matched_degeneracy_time = it->time;
+                    }
+                }
+                if (matched_degeneracy != degeneracy_queue_.end() &&
+                    odom_time - matched_degeneracy_time <= cloud_time_tolerance_)
+                {
+                    degeneracy = *matched_degeneracy;
+                }
             }
         }
 
@@ -670,13 +731,11 @@ private:
     /**
      * @brief 计算两个 ScanContext 描述子的距离。
      *
-     * 当前使用余弦距离：
+     * 使用余弦距离：
      *
      *     dist = 1 - (a · b) / (||a|| ||b||)
      *
      * dist 越小表示两个关键帧的全局结构越相似。
-     * 当前初版没有做环向平移搜索，因此对大 yaw 差场景不够鲁棒，
-     * 后续若要增强，可以补 sector-shift 对齐。
      */
     double scanContextDistance(
         const std::vector<float> &a,
@@ -687,18 +746,21 @@ private:
             return 1.0;
         }
 
-        double dot = 0.0;
         double na = 0.0;
         double nb = 0.0;
         for (size_t i = 0; i < a.size(); ++i)
         {
-            dot += static_cast<double>(a[i]) * static_cast<double>(b[i]);
             na += static_cast<double>(a[i]) * static_cast<double>(a[i]);
             nb += static_cast<double>(b[i]) * static_cast<double>(b[i]);
         }
         if (na < 1e-9 || nb < 1e-9)
         {
             return 1.0;
+        }
+        double dot = 0.0;
+        for (size_t i = 0; i < a.size(); ++i)
+        {
+            dot += static_cast<double>(a[i]) * static_cast<double>(b[i]);
         }
         return 1.0 - dot / std::sqrt(na * nb);
     }
@@ -811,11 +873,74 @@ private:
         {
             const double sc_distance = candidates[idx].first;
             const int candidate_id = candidates[idx].second;
+            std::string cooldown_reason;
+            if (isLoopCoolingDown(current_id, candidate_id, cooldown_reason))
+            {
+                writeLoopCsv(
+                    current_id,
+                    candidate_id,
+                    sc_distance,
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(),
+                    false,
+                    false,
+                    0,
+                    cur.cloud ? cur.cloud->size() : 0,
+                    cooldown_reason);
+                RCLCPP_INFO(
+                    get_logger(),
+                    "Reject loop cur=%d cand=%d: %s",
+                    current_id, candidate_id, cooldown_reason.c_str());
+                continue;
+            }
             if (addIcpLoopFactor(current_id, candidate_id, sc_distance))
             {
                 return;
             }
         }
+    }
+
+    /**
+     * @brief 判断候选回环是否处于冷却期。
+     *
+     * 冷却的对象不是单个 current_id，而是已经接受的回环事件：
+     * - current 关键帧相近：避免连续帧反复加回环；
+     * - candidate 关键帧相近：避免多个当前帧重复连接同一历史区域；
+     * - 两端都相近：即使两者不是完全相同的 ID，也视为同一回环事件。
+     */
+    bool isLoopCoolingDown(
+        int current_id,
+        int candidate_id,
+        std::string &reason) const
+    {
+        const int current_gap = std::max(0, loop_current_cooldown_keyframes_);
+        const int candidate_gap = std::max(0, loop_candidate_cooldown_keyframes_);
+        const int pair_gap = std::max(0, loop_pair_cooldown_keyframes_);
+
+        for (const auto &accepted : accepted_loop_pairs_)
+        {
+            const int current_delta = std::abs(current_id - accepted.first);
+            const int candidate_delta = std::abs(candidate_id - accepted.second);
+
+            if (current_delta < current_gap)
+            {
+                reason = "current_cooldown_reject";
+                return true;
+            }
+            if (candidate_delta < candidate_gap)
+            {
+                reason = "candidate_cooldown_reject";
+                return true;
+            }
+            if (current_delta < pair_gap && candidate_delta < pair_gap)
+            {
+                reason = "loop_pair_cooldown_reject";
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1045,7 +1170,8 @@ private:
             return false;
         }
 
-        // 退化相关回环虽然通过了更严格验证，但仍给稍大的 sigma，避免单条回环过度拉扯轨迹。
+        // 退化相关回环虽然通过了更严格验证，但仍给稍大的基础 sigma，避免
+        // 单条回环过度拉扯轨迹。
         const double sigma =
             degenerate_pair ? loop_noise_sigma_degenerate_ : loop_noise_sigma_normal_;
         const auto loop_noise =
@@ -1057,6 +1183,7 @@ private:
         graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(
             candidate_id, current_id, measurement, loop_noise));
         loop_index_container_[current_id] = candidate_id;
+        accepted_loop_pairs_.emplace_back(current_id, candidate_id);
         writeLoopCsv(
             current_id,
             candidate_id,
@@ -1202,13 +1329,14 @@ private:
     }
 
 private:
-    // 互斥锁保护 latest_cloud_msg_ 与 latest_degeneracy_，避免 ROS 回调并发读写。
+    // 互斥锁保护点云/退化消息队列，避免 ROS 回调并发读写。
     std::mutex mtx_;
-    // 最近一帧前端 body 系点云缓存。
-    sensor_msgs::msg::PointCloud2::SharedPtr latest_cloud_msg_;
-    // 最近一帧前端退化信息缓存。
-    DegeneracyInfo latest_degeneracy_;
-    bool has_degeneracy_ = false;
+    // 按时间戳保存最近若干点云，odomHandler() 从中选择最近消息。
+    std::deque<sensor_msgs::msg::PointCloud2::SharedPtr> cloud_queue_;
+    // 按时间戳保存最近若干退化状态，避免使用过期的 latest 状态。
+    std::deque<DegeneracyInfo> degeneracy_queue_;
+    // 最近一次已匹配点云的时间戳，保证点云单调且不重复使用。
+    double last_matched_cloud_time_ = -std::numeric_limits<double>::infinity();
 
     // 三个输入订阅器：位姿、点云、前端退化先验。
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom_;
@@ -1227,13 +1355,19 @@ private:
     std::vector<KeyFrame> keyframes_;
     // 已经接受的回环约束，用于避免同一 current_id 重复加回环。
     std::unordered_map<int, int> loop_index_container_;
+    // 已接受回环对，用于执行 current/candidate/pair 三种冷却规则。
+    std::vector<std::pair<int, int>> accepted_loop_pairs_;
 
     // 以下参数均可通过 ROS2 parameter 覆盖。
     double keyframe_distance_ = 1.0;
     double keyframe_yaw_ = 0.25;
     double cloud_time_tolerance_ = 0.20;
+    size_t sync_queue_size_ = 200;
     int recent_exclusion_num_ = 30;
     int loop_candidate_top_k_ = 1;
+    int loop_current_cooldown_keyframes_ = 10;
+    int loop_candidate_cooldown_keyframes_ = 20;
+    int loop_pair_cooldown_keyframes_ = 30;
     double scan_context_distance_threshold_ = 0.18;
     double icp_fitness_threshold_normal_ = 0.30;
     double icp_fitness_threshold_degenerate_ = 0.10;

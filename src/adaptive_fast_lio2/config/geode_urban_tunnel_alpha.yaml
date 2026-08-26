@@ -20,8 +20,10 @@ adaptive_fastlio_mapping:
     feature_extract_enable: false
 
     publish:
+      # Urban Tunnel01 本次开启当前帧点云和前端累计地图，便于 RViz 检查；
+      # cloud_registered_body 同时保留，供后端构造关键帧和 ICP 输入。
       scan_publish_en: true
-      dense_publish_en: true
+      dense_publish_en: false
       scan_bodyframe_pub_en: true
       map_en: true
 
@@ -74,9 +76,27 @@ adaptive_fastlio_mapping:
       max_points_per_normal_bin: 30         # 退化帧内每个法向方向分箱最多允许写入地图的点数。
       max_novel_points_per_frame: 50        # 退化帧内地图未知区域 novel points 的帧级入图上限。
 
+    adaptive_window:
+      # Urban Tunnel01 使用完整滑动窗口退化判断。
+      enable: true
+      size: 20                              # 最近 20 帧统计持续退化状态。
+      persistent_ratio_threshold: 0.5       # 窗口内退化帧比例达到该水平才进入候选。
+      normal_ratio_scale: 1.5               # 窗口平均法向特征值比例的相对阈值。
+      residual_stability_ratio: 0.5         # 残差变异系数上限，约束窗口内残差稳定性。
+      min_motion: 2.0                       # 窗口累计位移下限，排除静止抖动。
+      max_yaw_change: 0.25                  # 窗口累计 yaw 变化上限，区分直行隧道和转弯。
+      min_recent_degenerate_streak: 2       # 最近连续退化帧数量下限。
+      min_condition_number: 50.0            # 窗口平均条件数下限，确认约束病态。
+      enter_count_threshold: 3              # 连续满足候选条件多少次后进入 Persistent。
+      exit_count_threshold: 5               # 连续不满足候选条件多少次后退出 Persistent。
+      persistent_direction_quota_scale: 0.5 # Persistent 状态下收紧重复法向点配额。
+      persistent_novel_quota_scale: 0.5     # Persistent 状态下收紧新区域点配额。
+
     runtime_log:
-      summary_interval_frames: 10
-      sensor_debug: true
-      csv_enable: false
+      # 运行时保留 CSV，关闭高频终端日志，便于观察后端输出。
+      summary_interval_frames: 1000000
+      sensor_debug: false
+      console_enable: false
+      csv_enable: true
       csv_append: false
       csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/geode_urban_tunnel01/results/adaptive_runtime.csv"

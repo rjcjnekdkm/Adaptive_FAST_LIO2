@@ -1,0 +1,80 @@
+adaptive_fastlio_mapping:
+  ros__parameters:
+    common:
+      # ENWIDE tunnel_d 的 ROS2 话题。
+      lid_topic: "/ouster/points"
+      imu_topic: "/ouster/imu"
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      # ENWIDE 使用 Ouster OS0-128，PointCloud2 中包含逐点 t 和 ring 字段。
+      lidar_type: 3
+      scan_line: 128
+      # t 字段为纳秒单位；预处理模块会将其转换为毫秒保存到 curvature。
+      timestamp_unit: 3
+      scan_rate: 10
+      blind: 0.65
+
+    # 首次 ENWIDE 验证保留较多点，确认数据链路和退化判断正常后再调整。
+    point_filter_num: 4
+    feature_extract_enable: false
+
+    publish:
+      scan_publish_en: true
+      dense_publish_en: false
+      scan_bodyframe_pub_en: true
+      map_en: true
+
+    mapping:
+      gyr_cov: 0.1
+      acc_cov: 0.1
+      b_gyr_cov: 0.0001
+      b_acc_cov: 0.0001
+      filter_size_surf: 0.5
+      filter_size_map: 0.5
+
+      # ENWIDE os_sensor -> os_imu 外参，由 os_enwide.json 的
+      # imu_to_sensor_transform 求逆得到，单位为米。
+      extrinsic_T: [-0.006253, 0.011775, -0.007645]
+      extrinsic_R: [1.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0,
+                    0.0, 0.0, 1.0]
+      extrinsic_est_en: false
+
+      nearest_search_num: 5
+      nearest_sq_dist_threshold: 5.0
+      plane_residual_threshold: 0.1
+      effective_score_threshold: 0.9
+      scan_match_max_iteration: 5
+      scan_match_min_effective_points: 20
+      laser_point_cov: 0.001
+      map_init_min_points: 6
+      cube_len: 1000.0
+      det_range: 150.0
+      move_threshold: 1.5
+      local_map_enable: true
+      local_map_delete_enable: true
+
+    adaptive_map:
+      # ENWIDE 首次运行先打开 idea 模块，记录退化窗口和入图决策。
+      enable: true
+      min_effective_points: 200
+      min_range: 0.65
+      max_range: 150.0
+      residual_scale: 2.0
+      residual_robust_sigma: 2.5
+      min_quality_score: 0.92
+      min_effective_ratio: 0.1
+      max_mean_residual: 0.15
+      min_normal_eigen_ratio: 0.02
+      normal_bin_angle_deg: 15.0
+      max_points_per_normal_bin: 30
+      max_novel_points_per_frame: 50
+
+    runtime_log:
+      summary_interval_frames: 10
+      sensor_debug: true
+      csv_enable: true
+      csv_append: false
+      csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/enwide_tunnel/results/adaptive_runtime.csv"

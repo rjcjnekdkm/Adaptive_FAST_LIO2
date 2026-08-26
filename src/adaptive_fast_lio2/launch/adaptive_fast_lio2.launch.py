@@ -21,6 +21,16 @@ def generate_launch_description():
     rviz_use = LaunchConfiguration("rviz")
     rviz_cfg = LaunchConfiguration("rviz_cfg")
     backend_use = LaunchConfiguration("backend")
+    loop_current_cooldown_keyframes = LaunchConfiguration("loop_current_cooldown_keyframes")
+    loop_candidate_cooldown_keyframes = LaunchConfiguration("loop_candidate_cooldown_keyframes")
+    loop_pair_cooldown_keyframes = LaunchConfiguration("loop_pair_cooldown_keyframes")
+    sync_queue_size = LaunchConfiguration("sync_queue_size")
+    backend_tum_path = LaunchConfiguration("backend_tum_path")
+    backend_loop_csv_path = LaunchConfiguration("backend_loop_csv_path")
+    backend_log_enable = LaunchConfiguration("backend_log_enable")
+    publish_optimized_map = LaunchConfiguration("publish_optimized_map")
+    optimized_map_publish_interval = LaunchConfiguration("optimized_map_publish_interval")
+    optimized_map_leaf_size = LaunchConfiguration("optimized_map_leaf_size")
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
@@ -58,6 +68,74 @@ def generate_launch_description():
         description="Run degenerate-aware loop backend if true"
     )
 
+    declare_loop_current_cooldown_cmd = DeclareLaunchArgument(
+        "loop_current_cooldown_keyframes",
+        default_value="10",
+        description="Cooldown distance for nearby current keyframes"
+    )
+
+    declare_loop_candidate_cooldown_cmd = DeclareLaunchArgument(
+        "loop_candidate_cooldown_keyframes",
+        default_value="20",
+        description="Cooldown distance for nearby candidate keyframes"
+    )
+
+    declare_loop_pair_cooldown_cmd = DeclareLaunchArgument(
+        "loop_pair_cooldown_keyframes",
+        default_value="30",
+        description="Cooldown distance for a repeated loop pair event"
+    )
+
+    declare_sync_queue_cmd = DeclareLaunchArgument(
+        "sync_queue_size",
+        default_value="200",
+        description="Number of cloud/degeneracy messages kept for timestamp matching"
+    )
+
+    declare_backend_tum_path_cmd = DeclareLaunchArgument(
+        "backend_tum_path",
+        default_value=(
+            "/home/romi/Adaptive_FAST_LIO2/experiments/"
+            "subt_mrs_hawkins_long_corridor/results/"
+            "adaptive_backend_optimized.tum"
+        ),
+        description="TUM output path for optimized backend trajectory"
+    )
+
+    declare_backend_loop_csv_path_cmd = DeclareLaunchArgument(
+        "backend_loop_csv_path",
+        default_value=(
+            "/home/romi/Adaptive_FAST_LIO2/experiments/"
+            "subt_mrs_hawkins_long_corridor/results/"
+            "adaptive_backend_loops.csv"
+        ),
+        description="CSV output path for backend loop diagnostics"
+    )
+
+    declare_backend_log_enable_cmd = DeclareLaunchArgument(
+        "backend_log_enable",
+        default_value="true",
+        description="Enable backend trajectory and loop CSV logging"
+    )
+
+    declare_publish_optimized_map_cmd = DeclareLaunchArgument(
+        "publish_optimized_map",
+        default_value="false",
+        description="Publish the backend optimized map for RViz"
+    )
+
+    declare_optimized_map_publish_interval_cmd = DeclareLaunchArgument(
+        "optimized_map_publish_interval",
+        default_value="10",
+        description="Publish optimized map every N backend keyframes"
+    )
+
+    declare_optimized_map_leaf_size_cmd = DeclareLaunchArgument(
+        "optimized_map_leaf_size",
+        default_value="0.5",
+        description="Voxel leaf size for the published optimized map"
+    )
+
     adaptive_lio_node = Node(
         package="adaptive_fast_lio2",
         executable="adaptive_fastlio_mapping",
@@ -81,7 +159,17 @@ def generate_launch_description():
         executable="adaptive_degenerate_backend",
         name="adaptive_degenerate_backend",
         parameters=[
-            {"use_sim_time": use_sim_time}
+            {"use_sim_time": use_sim_time},
+            {"loop_current_cooldown_keyframes": loop_current_cooldown_keyframes},
+            {"loop_candidate_cooldown_keyframes": loop_candidate_cooldown_keyframes},
+            {"loop_pair_cooldown_keyframes": loop_pair_cooldown_keyframes},
+            {"sync_queue_size": sync_queue_size},
+            {"backend_tum_path": backend_tum_path},
+            {"backend_loop_csv_path": backend_loop_csv_path},
+            {"backend_log_enable": backend_log_enable},
+            {"publish_optimized_map": publish_optimized_map},
+            {"optimized_map_publish_interval": optimized_map_publish_interval},
+            {"optimized_map_leaf_size": optimized_map_leaf_size}
         ],
         output="screen",
         condition=IfCondition(backend_use)
@@ -94,6 +182,16 @@ def generate_launch_description():
     ld.add_action(declare_rviz_cmd)
     ld.add_action(declare_rviz_config_path_cmd)
     ld.add_action(declare_backend_cmd)
+    ld.add_action(declare_loop_current_cooldown_cmd)
+    ld.add_action(declare_loop_candidate_cooldown_cmd)
+    ld.add_action(declare_loop_pair_cooldown_cmd)
+    ld.add_action(declare_sync_queue_cmd)
+    ld.add_action(declare_backend_tum_path_cmd)
+    ld.add_action(declare_backend_loop_csv_path_cmd)
+    ld.add_action(declare_backend_log_enable_cmd)
+    ld.add_action(declare_publish_optimized_map_cmd)
+    ld.add_action(declare_optimized_map_publish_interval_cmd)
+    ld.add_action(declare_optimized_map_leaf_size_cmd)
 
     ld.add_action(adaptive_lio_node)
     ld.add_action(adaptive_backend_node)
