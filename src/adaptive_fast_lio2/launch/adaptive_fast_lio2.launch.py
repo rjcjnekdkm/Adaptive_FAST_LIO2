@@ -31,6 +31,7 @@ def generate_launch_description():
     publish_optimized_map = LaunchConfiguration("publish_optimized_map")
     optimized_map_publish_interval = LaunchConfiguration("optimized_map_publish_interval")
     optimized_map_leaf_size = LaunchConfiguration("optimized_map_leaf_size")
+    frontend_runtime_csv_path = LaunchConfiguration("frontend_runtime_csv_path")
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
@@ -136,13 +137,23 @@ def generate_launch_description():
         description="Voxel leaf size for the published optimized map"
     )
 
+    declare_frontend_runtime_csv_path_cmd = DeclareLaunchArgument(
+        "frontend_runtime_csv_path",
+        default_value=(
+            "/home/romi/Adaptive_FAST_LIO2/experiments/"
+            "geode_tunneling_tunnel_gamma/results/adaptive_runtime.csv"
+        ),
+        description="CSV output path for frontend runtime/degradation statistics"
+    )
+
     adaptive_lio_node = Node(
         package="adaptive_fast_lio2",
         executable="adaptive_fastlio_mapping",
         name="adaptive_fastlio_mapping",
         parameters=[
             PathJoinSubstitution([config_path, config_file]),
-            {"use_sim_time": use_sim_time}
+            {"use_sim_time": use_sim_time},
+            {"runtime_log.csv_path": frontend_runtime_csv_path}
         ],
         output="screen"
     )
@@ -192,6 +203,7 @@ def generate_launch_description():
     ld.add_action(declare_publish_optimized_map_cmd)
     ld.add_action(declare_optimized_map_publish_interval_cmd)
     ld.add_action(declare_optimized_map_leaf_size_cmd)
+    ld.add_action(declare_frontend_runtime_csv_path_cmd)
 
     ld.add_action(adaptive_lio_node)
     ld.add_action(adaptive_backend_node)

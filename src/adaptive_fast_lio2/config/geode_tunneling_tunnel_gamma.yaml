@@ -1,0 +1,96 @@
+adaptive_fastlio_mapping:
+  ros__parameters:
+    common:
+      # GEODE Metro Tunnels / Tunneling_tunnel2_gamma：Livox AVIA + Xsens MTi-30。
+      lid_topic: "/livox/lidar"
+      # 使用外置 Xsens 真正的 100 Hz IMU；不要使用 Livox 内置 /livox/imu。
+      imu_topic: "/imu/data"
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      lidar_type: 1                       # Livox CustomMsg。
+      scan_line: 6                        # AVIA 的 FAST-LIO2 配置。
+      timestamp_unit: 2                   # Livox 分支直接读取 offset_time。
+      scan_rate: 10
+      blind: 4.0
+
+    point_filter_num: 3
+    feature_extract_enable: false
+
+    publish:
+      scan_publish_en: true
+      dense_publish_en: true
+      scan_bodyframe_pub_en: true         # 后端关键帧与回环的输入。
+      map_en: true
+
+    mapping:
+      # GEODE 官方 gamma.yaml 给出的是标准差；本实现向过程噪声矩阵 Q 写入方差。
+      # gyro_std=0.005144105954, acc_std=0.005574102551,
+      # gyro_rw=0.000108816276, acc_rw=0.000120786718。
+      gyr_cov: 0.0000264618260678
+      acc_cov: 0.0000310706192528
+      b_gyr_cov: 0.0000000118409818239
+      b_acc_cov: 0.0000000145894311777
+      imu_init_num: 400                   # Xsens 约 100 Hz，对应约 4 s 静止初始化。
+      filter_size_surf: 0.5
+      filter_size_map: 0.5
+
+      # 官方 T_IMU_LiDAR：p_imu = R * p_lidar + t。
+      extrinsic_T: [0.049258, -0.012500, 0.026946]
+      extrinsic_R: [0.999620, 0.027463, 0.002445,
+                   -0.027517, 0.999299, 0.025398,
+                   -0.001746, -0.025456, 0.999674]
+      extrinsic_est_en: false             # 已知外参固定，避免隧道退化时在线估计发散。
+
+      nearest_search_num: 5
+      nearest_sq_dist_threshold: 5.0
+      plane_residual_threshold: 0.1
+      effective_score_threshold: 0.9
+      scan_match_max_iteration: 3
+      scan_match_min_effective_points: 20
+      laser_point_cov: 0.001
+      map_init_min_points: 6
+      cube_len: 1000.0
+      det_range: 200.0
+      move_threshold: 1.5
+      local_map_enable: true
+      local_map_delete_enable: true
+
+    adaptive_map:
+      enable: true
+      min_effective_points: 200
+      min_range: 4.0
+      max_range: 200.0
+      residual_scale: 2.0
+      residual_robust_sigma: 2.5
+      min_quality_score: 0.92
+      min_effective_ratio: 0.1
+      max_mean_residual: 0.15
+      min_normal_eigen_ratio: 0.02
+      normal_bin_angle_deg: 15.0
+      max_points_per_normal_bin: 30
+      max_novel_points_per_frame: 50
+
+    adaptive_window:
+      enable: true
+      size: 20
+      persistent_ratio_threshold: 0.5
+      normal_ratio_scale: 1.5
+      residual_stability_ratio: 0.5
+      min_motion: 2.0
+      max_yaw_change: 0.25
+      min_recent_degenerate_streak: 2
+      min_condition_number: 50.0
+      enter_count_threshold: 3
+      exit_count_threshold: 5
+      persistent_direction_quota_scale: 0.5
+      persistent_novel_quota_scale: 0.5
+
+    runtime_log:
+      summary_interval_frames: 1000000
+      sensor_debug: false
+      console_enable: false
+      csv_enable: true
+      csv_append: false
+      csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/results/adaptive_runtime.csv"

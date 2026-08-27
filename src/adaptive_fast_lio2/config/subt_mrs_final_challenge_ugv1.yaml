@@ -1,0 +1,101 @@
+adaptive_fastlio_mapping:
+  ros__parameters:
+    common:
+      lid_topic: "/velodyne_points"
+      imu_topic: "/imu/data"
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      lidar_type: 2
+      scan_line: 16
+      # velodyne_pointcloud publishes per-point time in seconds.
+      timestamp_unit: 0
+      scan_rate: 10
+      blind: 0.5
+
+    # Keep all VLP-16 points; the cloud is already sparse.
+    point_filter_num: 1
+    feature_extract_enable: false
+
+    publish:
+      scan_publish_en: true               # 发布 /cloud_registered，用于 RViz 查看前端注册点云。
+      dense_publish_en: true              # 发布 dense cloud，可视化模式开启。
+      scan_bodyframe_pub_en: true         # 必须保留：后端订阅 /cloud_registered_body 保存关键帧点云并做 ICP。
+      map_en: true                        # 发布前端 /Laser_map 和 /ikdtree_map，可与后端优化地图对比。
+
+    mapping:
+      gyr_cov: 0.1
+      acc_cov: 0.1
+      b_gyr_cov: 0.0001
+      b_acc_cov: 0.0001
+      imu_init_num: 400
+      filter_size_surf: 0.5
+      filter_size_map: 0.5
+
+      # Official Final_Challenge_UGV1 laser_to_imu extrinsics: identity.
+      # p_imu = R_laser_to_imu * p_lidar + t_laser_to_imu.
+      extrinsic_T: [0.0, 0.0, 0.0]
+      extrinsic_R: [1.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0,
+                    0.0, 0.0, 1.0]
+      extrinsic_est_en: false
+
+      nearest_search_num: 5
+      nearest_sq_dist_threshold: 5.0
+      plane_residual_threshold: 0.1
+      effective_score_threshold: 0.9
+      scan_match_max_iteration: 3
+      scan_match_min_effective_points: 20
+      laser_point_cov: 0.001
+      map_init_min_points: 6
+      cube_len: 1000.0
+      det_range: 100.0
+      move_threshold: 1.5
+      local_map_enable: true
+      local_map_delete_enable: true
+
+    adaptive_map:
+      enable: true                          # 是否启用 idea 模块的退化感知地图更新；false 时尽量保持原 FAST-LIO2 入图行为。
+      min_effective_points: 120             # 单帧有效点到面约束数量下限；SubT 16 线数据较稀疏，因此低于默认 200。
+      min_range: 0.5                        # 允许入图的最小 LiDAR 量程，过滤过近点和盲区附近不稳定点。
+      max_range: 80.0                       # 允许入图的最大 LiDAR 量程，过滤远距离噪声和稀疏弱约束点。
+      residual_scale: 2.0                   # 单点残差阈值相对当前帧平均残差的放大系数。
+      residual_robust_sigma: 2.5            # 稳健残差阈值系数，用 median + sigma * 1.4826 * MAD 抑制异常残差。
+      min_quality_score: 0.92               # 单点 FAST-LIO2 风格质量分数下限，低质量匹配点不允许入图。
+      min_effective_ratio: 0.08             # 有效约束点占下采样点数的比例下限；SubT 稀疏数据略放宽。
+      max_mean_residual: 0.15               # 当前帧平均点到面残差上限，超过则认为匹配质量差。
+      # min_normal_eigen_ratio: 0.02        # 原始值：较保守；本次运行最低约 0.0208，未触发退化。
+      # min_normal_eigen_ratio: 0.03        # 上一版：可触发少量退化帧，但对 long corridor 仍偏保守。
+      min_normal_eigen_ratio: 0.04          # 本版：进一步提高法向覆盖度要求，让长走廊弱法向覆盖段更容易触发单帧退化。
+      normal_bin_angle_deg: 15.0            # 法向方向分箱角度，退化帧中用于限制重复方向点入图。
+      max_points_per_normal_bin: 30         # 退化帧内每个法向方向分箱最多允许写入地图的点数。
+      max_novel_points_per_frame: 50        # 退化帧内地图未知区域 novel points 的帧级入图上限。
+
+    adaptive_window:
+      enable: true                          # 是否启用动态滑动窗口退化判断；关闭后只保留单帧静态退化判断。
+      size: 20                              # 窗口长度 K，统计最近 K 次地图更新的退化状态和质量指标。
+      # persistent_ratio_threshold: 0.6     # 上一版：要求窗口内 60% 帧退化，进入 Persistent 偏严格。
+      persistent_ratio_threshold: 0.5       # 本版：降低持续退化比例门槛，使长走廊中连续弱退化段更容易进入 Persistent。
+      normal_ratio_scale: 1.5               # 窗口平均法向特征值比例阈值放大系数：mean(rho) < scale * rho_min。
+      residual_stability_ratio: 0.5         # 窗口残差变异系数上限，越小表示要求残差越稳定。
+      min_motion: 2.0                       # 窗口内累计位移下限，避免静止/小抖动误判为持续退化。
+      max_yaw_change: 0.25                  # 窗口内累计 yaw 变化上限，区分直走廊/隧道和拐角。
+      # min_recent_degenerate_streak: 5     # 上一版：要求最近连续 5 帧退化，能抑制误触发但对短连续段偏严格。
+      min_recent_degenerate_streak: 2       # 本版：允许更短的连续退化进入候选，再结合条件数/yaw/位移共同约束。
+      # min_condition_number: 1.0           # 上一版：只记录条件数，不额外限制 Persistent 候选。
+      min_condition_number: 50.0            # 本版：要求窗口平均条件数较高，保证 Persistent 更偏向真实约束病态场景。
+      enter_count_threshold: 3              # 连续满足持续退化候选多少次后进入 Persistent 模式。
+      exit_count_threshold: 5               # 连续不满足持续退化候选多少次后退出 Persistent 模式。
+      persistent_direction_quota_scale: 0.5 # Persistent 模式下每个法向方向入图配额缩放比例。
+      persistent_novel_quota_scale: 0.5     # Persistent 模式下 novel points 入图配额缩放比例。
+
+    runtime_log:
+      # summary_interval_frames: 10          # 原始值：每 10 帧输出一次前端 Runtime 终端日志。
+      summary_interval_frames: 1000000       # 临时值：配合后端调试，基本关闭周期性前端 Runtime 终端日志。
+      # sensor_debug: true                   # 原始值：输出 PointCloud2/IMU/Sync 高频传感器日志。
+      sensor_debug: false                    # 临时值：关闭前端传感器终端日志，方便观察后端回环日志。
+      console_enable: false                  # 临时关闭前端 Degeneracy/Runtime 终端日志；CSV 记录仍然开启。
+      csv_enable: true
+      csv_append: false
+      csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/subt_mrs_final_challenge_ugv1/results/adaptive_runtime.csv"

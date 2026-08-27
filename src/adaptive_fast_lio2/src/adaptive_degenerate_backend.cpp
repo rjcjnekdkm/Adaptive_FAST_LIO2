@@ -11,6 +11,7 @@
 #include <numeric>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <Eigen/Dense>
@@ -217,7 +218,12 @@ struct KeyFrame
     gtsam::Pose3 optimized_pose;
     Cloud::Ptr cloud;
     DegeneracyInfo degeneracy;
+    // Scan Context 极坐标网格（ring × sector），每格保存最大高度。
     std::vector<float> scan_context;
+    // ring key：每一环对所有扇区求均值，旋转不变，用于快速粗检索。
+    std::vector<float> ring_key;
+    // sector key：每一扇区对所有环求均值，用于估计两个描述子的航向循环偏移。
+    std::vector<float> sector_key;
 };
 
 }  // namespace
@@ -271,9 +277,12 @@ public:
         // 回环对冷却：当前帧和候选帧都相近时，视为同一局部回环事件。
         loop_pair_cooldown_keyframes_ =
             declare_parameter<int>("loop_pair_cooldown_keyframes", 30);
-        // ScanContext 余弦距离阈值，越小表示两个描述子越相似。
+        // 完整 Scan Context 距离阈值，越小表示经扇区循环对齐后两个描述子越相似。
         scan_context_distance_threshold_ =
             declare_parameter<double>("scan_context_distance_threshold", 0.18);
+        // ring key 粗检索保留的历史候选数。它只缩小检索范围，最终仍以完整 SC 距离排序。
+        scan_context_ringkey_candidate_num_ =
+            declare_parameter<int>("scan_context_ringkey_candidate_num", 10);
         // Normal 状态下 ICP 回环验证阈值。
         icp_fitness_threshold_normal_ =
             declare_parameter<double>("icp_fitness_threshold_normal", 0.30);
@@ -313,10 +322,13 @@ public:
         // 后端优化地图体素下采样大小。仅影响发布出来的可视化/对比地图，不影响优化本身。
         optimized_map_leaf_size_ =
             declare_parameter<double>("optimized_map_leaf_size", 0.5);
-        // 简化 ScanContext 描述子参数：rings × sectors 的极坐标网格。
+        // Scan Context 参数：rings × sectors 的极坐标最大高度网格。
         scan_context_rings_ = declare_parameter<int>("scan_context_rings", 20);
         scan_context_sectors_ = declare_parameter<int>("scan_context_sectors", 60);
         scan_context_max_radius_ = declare_parameter<double>("scan_context_max_radius", 80.0);
+        // sector key 的最优循环偏移附近再搜索的扇区数量，补偿粗对齐的离散误差。
+        scan_context_alignment_search_radius_ =
+            declare_parameter<int>("scan_context_alignment_search_radius", 2);
         // 后端文件记录。TUM 用于 evo 评估，CSV 用于分析回环候选与退化感知验证行为。
         backend_log_enable_ = declare_parameter<bool>("backend_log_enable", true);
         backend_tum_path_ = declare_parameter<std::string>(
@@ -665,6 +677,8 @@ private:
         kf.cloud = downsampled;
         kf.degeneracy = degeneracy;
         kf.scan_context = makeScanContext(*downsampled);
+        kf.ring_key = makeRingKey(kf.scan_context);
+        kf.sector_key = makeSectorKey(kf.scan_context);
 
         addPoseGraphFactors(kf);
         keyframes_.push_back(kf);
@@ -680,16 +694,11 @@ private:
     }
 
     /**
-     * @brief 构造一个简化版 ScanContext 描述子。
+     * @brief 构造 Scan Context 的 ring × sector 最大高度描述子。
      *
-     * 思路：
-     * - 以当前帧雷达坐标系为中心；
-     * - 将 xy 平面划分为 rings × sectors 个极坐标网格；
-     * - 每个格子保存该区域内点的最大 z 值；
-     * - 没有点的格子置 0。
-     *
-     * 这不是完整 ScanContext 官方实现，缺少旋转对齐/sector shift 等增强，
-     * 但足够作为五天内初版后端的候选回环检索骨架。
+     * 以关键帧雷达坐标系为原点，将 xy 平面划分为极坐标网格。第 r 环、第 s 扇区的
+     * 数值为该格内点的最大 z 值。与官方 Scan Context 一致，旋转只会造成列（sector）
+     * 的循环移位，因此后续可通过 sector shift 对齐两个描述子。
      */
     std::vector<float> makeScanContext(const Cloud &cloud) const
     {
@@ -729,40 +738,187 @@ private:
     }
 
     /**
-     * @brief 计算两个 ScanContext 描述子的距离。
+     * @brief 从 Scan Context 网格生成旋转不变的 ring key。
      *
-     * 使用余弦距离：
+     * 第 r 维是第 r 个环内所有扇区的均值：
      *
-     *     dist = 1 - (a · b) / (||a|| ||b||)
+     *     RK(r) = (1 / S) sum_s SC(r, s)
      *
-     * dist 越小表示两个关键帧的全局结构越相似。
+     * 车辆/传感器绕 z 轴转动只会交换扇区列，不改变环内均值；因此 ring key 适合
+     * 在全部历史关键帧中快速预筛候选，但不能单独用作回环判据。
      */
-    double scanContextDistance(
+    std::vector<float> makeRingKey(const std::vector<float> &descriptor) const
+    {
+        const int rows = std::max(1, scan_context_rings_);
+        const int cols = std::max(1, scan_context_sectors_);
+        std::vector<float> key(rows, 0.0f);
+        if (descriptor.size() != static_cast<size_t>(rows * cols))
+        {
+            return key;
+        }
+        for (int r = 0; r < rows; ++r)
+        {
+            double sum = 0.0;
+            for (int s = 0; s < cols; ++s)
+            {
+                sum += descriptor[r * cols + s];
+            }
+            key[r] = static_cast<float>(sum / static_cast<double>(cols));
+        }
+        return key;
+    }
+
+    /**
+     * @brief 从 Scan Context 网格生成 sector key，用于估计航向循环偏移。
+     *
+     * 第 s 维是第 s 个扇区内所有环的均值。比较两个 sector key 的所有循环移位，
+     * 可得到描述子对齐所需的粗略 yaw 偏移。
+     */
+    std::vector<float> makeSectorKey(const std::vector<float> &descriptor) const
+    {
+        const int rows = std::max(1, scan_context_rings_);
+        const int cols = std::max(1, scan_context_sectors_);
+        std::vector<float> key(cols, 0.0f);
+        if (descriptor.size() != static_cast<size_t>(rows * cols))
+        {
+            return key;
+        }
+        for (int s = 0; s < cols; ++s)
+        {
+            double sum = 0.0;
+            for (int r = 0; r < rows; ++r)
+            {
+                sum += descriptor[r * cols + s];
+            }
+            key[s] = static_cast<float>(sum / static_cast<double>(rows));
+        }
+        return key;
+    }
+
+    /** @brief 计算等长向量的均方根距离，用于 ring key 粗检索。 */
+    double vectorDistance(
         const std::vector<float> &a,
         const std::vector<float> &b) const
     {
         if (a.size() != b.size() || a.empty())
         {
+            return std::numeric_limits<double>::infinity();
+        }
+        double squared_sum = 0.0;
+        for (size_t i = 0; i < a.size(); ++i)
+        {
+            const double d = static_cast<double>(a[i]) - static_cast<double>(b[i]);
+            squared_sum += d * d;
+        }
+        return std::sqrt(squared_sum / static_cast<double>(a.size()));
+    }
+
+    /**
+     * @brief 计算两个 sector key 的最优循环移位。
+     *
+     * 返回的 shift 满足：candidate 的第 (s + shift) 列与 current 的第 s 列对应。
+     */
+    int estimateSectorShift(
+        const std::vector<float> &current,
+        const std::vector<float> &candidate) const
+    {
+        if (current.size() != candidate.size() || current.empty())
+        {
+            return 0;
+        }
+        const int cols = static_cast<int>(current.size());
+        int best_shift = 0;
+        double best_distance = std::numeric_limits<double>::infinity();
+        for (int shift = 0; shift < cols; ++shift)
+        {
+            double squared_sum = 0.0;
+            for (int s = 0; s < cols; ++s)
+            {
+                const double d = static_cast<double>(current[s]) -
+                    static_cast<double>(candidate[(s + shift) % cols]);
+                squared_sum += d * d;
+            }
+            if (squared_sum < best_distance)
+            {
+                best_distance = squared_sum;
+                best_shift = shift;
+            }
+        }
+        return best_shift;
+    }
+
+    /**
+     * @brief 计算指定列循环移位下的正式 Scan Context 距离。
+     *
+     * 每个非空扇区单独计算余弦距离并取平均：
+     *
+     *     d = mean_s [1 - (c_s dot h_s) / (||c_s|| ||h_s||)]
+     *
+     * 其中 h_s 是候选描述子循环移位后的第 s 列。该列级距离不会因不同扇区的点数
+     * 或绝对高度整体放大而被单个大值主导。
+     */
+    double scanContextDistanceAtShift(
+        const std::vector<float> &current,
+        const std::vector<float> &candidate,
+        int shift) const
+    {
+        const int rows = std::max(1, scan_context_rings_);
+        const int cols = std::max(1, scan_context_sectors_);
+        if (current.size() != static_cast<size_t>(rows * cols) ||
+            candidate.size() != current.size())
+        {
             return 1.0;
         }
 
-        double na = 0.0;
-        double nb = 0.0;
-        for (size_t i = 0; i < a.size(); ++i)
+        double distance_sum = 0.0;
+        int valid_columns = 0;
+        for (int s = 0; s < cols; ++s)
         {
-            na += static_cast<double>(a[i]) * static_cast<double>(a[i]);
-            nb += static_cast<double>(b[i]) * static_cast<double>(b[i]);
+            const int candidate_s = (s + shift + cols) % cols;
+            double dot = 0.0;
+            double current_norm = 0.0;
+            double candidate_norm = 0.0;
+            for (int r = 0; r < rows; ++r)
+            {
+                const double a = current[r * cols + s];
+                const double b = candidate[r * cols + candidate_s];
+                dot += a * b;
+                current_norm += a * a;
+                candidate_norm += b * b;
+            }
+            if (current_norm < 1e-9 || candidate_norm < 1e-9)
+            {
+                continue;
+            }
+            distance_sum += 1.0 - dot / std::sqrt(current_norm * candidate_norm);
+            ++valid_columns;
         }
-        if (na < 1e-9 || nb < 1e-9)
+        return valid_columns > 0 ? distance_sum / static_cast<double>(valid_columns) : 1.0;
+    }
+
+    /**
+     * @brief 使用 sector key 粗对齐并在其附近细搜索，返回最小 SC 距离。
+     */
+    std::pair<double, int> alignedScanContextDistance(const KeyFrame &current,
+                                                      const KeyFrame &candidate) const
+    {
+        const int cols = std::max(1, scan_context_sectors_);
+        const int coarse_shift = estimateSectorShift(current.sector_key, candidate.sector_key);
+        const int radius = std::min(std::max(0, scan_context_alignment_search_radius_), cols / 2);
+        double best_distance = std::numeric_limits<double>::infinity();
+        int best_shift = coarse_shift;
+        for (int delta = -radius; delta <= radius; ++delta)
         {
-            return 1.0;
+            const int shift = (coarse_shift + delta + cols) % cols;
+            const double distance =
+                scanContextDistanceAtShift(current.scan_context, candidate.scan_context, shift);
+            if (distance < best_distance)
+            {
+                best_distance = distance;
+                best_shift = shift;
+            }
         }
-        double dot = 0.0;
-        for (size_t i = 0; i < a.size(); ++i)
-        {
-            dot += static_cast<double>(a[i]) * static_cast<double>(b[i]);
-        }
-        return 1.0 - dot / std::sqrt(na * nb);
+        return {best_distance, best_shift};
     }
 
     /**
@@ -818,9 +974,10 @@ private:
      *
      * 流程：
      * 1. 排除最近 recent_exclusion_num_ 个关键帧；
-     * 2. 收集 ScanContext 距离低于阈值的历史候选；
-     * 3. 按距离从小到大排序，取前 loop_candidate_top_k_ 个；
-     * 4. 依次进入 ICP 几何验证，第一条通过验证的候选被加入 pose graph。
+     * 2. 用旋转不变 ring key 从全部历史帧中取最近的少量候选；
+     * 3. 对粗候选用 sector key 循环对齐，计算正式 Scan Context 距离；
+     * 4. 按正式距离排序，取前 loop_candidate_top_k_ 个；
+     * 5. 依次进入 ICP 几何验证，第一条通过验证的候选被加入 pose graph。
      *
      * ScanContext 只负责“召回候选”，不会直接接受回环；
      * 真正是否加入 loop factor 由 addIcpLoopFactor() 决定。
@@ -838,19 +995,16 @@ private:
         }
 
         const auto &cur = keyframes_[current_id];
-        std::vector<std::pair<double, int>> candidates;
+        // 第一阶段：ring key 不受 yaw 影响，代价低，适合作为全历史库的粗检索键。
+        std::vector<std::pair<double, int>> ringkey_candidates;
 
         for (int i = 0; i < current_id - recent_exclusion_num_; ++i)
         {
-            const double dist =
-                scanContextDistance(cur.scan_context, keyframes_[i].scan_context);
-            if (dist <= scan_context_distance_threshold_)
-            {
-                candidates.emplace_back(dist, i);
-            }
+            ringkey_candidates.emplace_back(
+                vectorDistance(cur.ring_key, keyframes_[i].ring_key), i);
         }
 
-        if (candidates.empty())
+        if (ringkey_candidates.empty())
         {
             return;
         }
@@ -860,19 +1014,52 @@ private:
         }
 
         std::sort(
-            candidates.begin(),
-            candidates.end(),
+            ringkey_candidates.begin(),
+            ringkey_candidates.end(),
             [](const auto &lhs, const auto &rhs)
             {
                 return lhs.first < rhs.first;
+            });
+
+        // 第二阶段：正式 Scan Context 距离包含 sector 循环对齐，保存 shift 便于日志/调试扩展。
+        struct ScanContextCandidate
+        {
+            double distance;
+            int id;
+            int sector_shift;
+        };
+        std::vector<ScanContextCandidate> candidates;
+        const int ringkey_limit = std::min(
+            static_cast<int>(ringkey_candidates.size()),
+            std::max(1, scan_context_ringkey_candidate_num_));
+        for (int idx = 0; idx < ringkey_limit; ++idx)
+        {
+            const int candidate_id = ringkey_candidates[idx].second;
+            const auto [distance, sector_shift] =
+                alignedScanContextDistance(cur, keyframes_[candidate_id]);
+            if (distance <= scan_context_distance_threshold_)
+            {
+                candidates.push_back({distance, candidate_id, sector_shift});
+            }
+        }
+        if (candidates.empty())
+        {
+            return;
+        }
+        std::sort(
+            candidates.begin(),
+            candidates.end(),
+            [](const ScanContextCandidate &lhs, const ScanContextCandidate &rhs)
+            {
+                return lhs.distance < rhs.distance;
             });
 
         const int max_try =
             std::min(static_cast<int>(candidates.size()), std::max(1, loop_candidate_top_k_));
         for (int idx = 0; idx < max_try; ++idx)
         {
-            const double sc_distance = candidates[idx].first;
-            const int candidate_id = candidates[idx].second;
+            const double sc_distance = candidates[idx].distance;
+            const int candidate_id = candidates[idx].id;
             std::string cooldown_reason;
             if (isLoopCoolingDown(current_id, candidate_id, cooldown_reason))
             {
@@ -1369,6 +1556,7 @@ private:
     int loop_candidate_cooldown_keyframes_ = 20;
     int loop_pair_cooldown_keyframes_ = 30;
     double scan_context_distance_threshold_ = 0.18;
+    int scan_context_ringkey_candidate_num_ = 10;
     double icp_fitness_threshold_normal_ = 0.30;
     double icp_fitness_threshold_degenerate_ = 0.10;
     double icp_max_correspondence_distance_ = 2.0;
@@ -1387,6 +1575,7 @@ private:
     int scan_context_rings_ = 20;
     int scan_context_sectors_ = 60;
     double scan_context_max_radius_ = 80.0;
+    int scan_context_alignment_search_radius_ = 2;
     double last_keyframe_yaw_ = 0.0;
     bool backend_log_enable_ = true;
     std::string backend_tum_path_;

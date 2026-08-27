@@ -1,0 +1,100 @@
+adaptive_fastlio_mapping:
+  ros__parameters:
+    common:
+      # GEODE Inland Waterways Short Gamma：Livox AVIA 数据。
+      lid_topic: "/livox/lidar"
+      # gamma_config.yaml 指定 Xsens MTi-30 为主 IMU。
+      imu_topic: "/imu/data"
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      lidar_type: 1        # Livox CustomMsg / Avia。
+      scan_line: 6
+      timestamp_unit: 2    # CustomMsg 直接使用 offset_time；该参数不参与 Livox 分支换算。
+      scan_rate: 10
+      blind: 4.0
+
+    point_filter_num: 3
+    feature_extract_enable: false
+
+    publish:
+      scan_publish_en: true
+      dense_publish_en: true
+      scan_bodyframe_pub_en: true
+      # 官方 avia.yaml 默认不发布累计 /Laser_map。
+      map_en: true
+
+    runtime_log:
+      summary_interval_frames: 10
+      sensor_debug: false
+
+    mapping:
+      # gamma_config.yaml 给出标准差；本实现的参数为协方差，故取平方。
+      gyr_cov: 0.0000264618260678       # gyro_std^2
+      acc_cov: 0.0000310706192528       # accel_std^2
+      b_gyr_cov: 0.0000000118409818239 # gyro_rw^2
+      b_acc_cov: 0.0000000145894311777 # accel_rw^2
+      imu_init_num: 400                 # Xsens IMU 约 100 Hz，使用约 4 s 初始化。
+      filter_size_surf: 0.5
+      filter_size_map: 0.5
+
+      # GEODE gamma_config.yaml 的 T_IMU_LiDAR：p_imu = R * p_lidar + t。
+      extrinsic_T: [0.049258, -0.012500, 0.026946]
+      extrinsic_R: [0.999620, 0.027463, 0.002445,
+                   -0.027517, 0.999299, 0.025398,
+                   -0.001746, -0.025456, 0.999674]
+
+      nearest_search_num: 5
+      nearest_sq_dist_threshold: 5.0
+      plane_residual_threshold: 0.1
+      effective_score_threshold: 0.9
+      scan_match_max_iteration: 3
+      scan_match_min_effective_points: 20
+      laser_point_cov: 0.001
+      extrinsic_est_en: false
+      map_init_min_points: 6
+      cube_len: 1000.0
+      det_range: 450.0
+      move_threshold: 1.5
+      local_map_enable: true
+      local_map_delete_enable: true
+
+    adaptive_map:
+      # 先关闭自适应更新，验证基础实现与官方 FAST-LIO2 的结果。
+      enable: true                          # 是否启用 idea 模块的退化感知地图更新；false 时尽量保持原 FAST-LIO2 入图行为。
+      min_effective_points: 200             # 单帧有效点到面约束数量下限，低于该值认为当前帧约束不足。
+      min_range: 4.0                        # 允许入图的最小 LiDAR 量程，过滤过近点和盲区附近不稳定点。
+      max_range: 200.0                      # 允许入图的最大 LiDAR 量程，过滤远距离噪声和稀疏弱约束点。
+      residual_scale: 2.0                   # 单点残差阈值相对当前帧平均残差的放大系数。
+      residual_robust_sigma: 2.5            # 稳健残差阈值系数，用 median + sigma * 1.4826 * MAD 抑制异常残差。
+      min_quality_score: 0.92               # 单点 FAST-LIO2 风格质量分数下限，低质量匹配点不允许入图。
+      min_effective_ratio: 0.1              # 有效约束点占下采样点数的比例下限，用于单帧退化判断。
+      max_mean_residual: 0.15               # 当前帧平均点到面残差上限，超过则认为匹配质量差。
+      min_normal_eigen_ratio: 0.02          # 法向信息矩阵最小/最大特征值比例下限，过低表示约束方向单一。
+      normal_bin_angle_deg: 15.0            # 法向方向分箱角度，退化帧中用于限制重复方向点入图。
+      max_points_per_normal_bin: 30         # 退化帧内每个法向方向分箱最多允许写入地图的点数。
+      max_novel_points_per_frame: 50        # 退化帧内地图未知区域 novel points 的帧级入图上限。
+
+    adaptive_window:
+      enable: true
+      size: 20
+      persistent_ratio_threshold: 0.5
+      normal_ratio_scale: 1.5
+      residual_stability_ratio: 0.5
+      min_motion: 2.0
+      max_yaw_change: 0.25
+      min_recent_degenerate_streak: 2
+      min_condition_number: 50.0
+      enter_count_threshold: 3
+      exit_count_threshold: 5
+      persistent_direction_quota_scale: 0.5
+      persistent_novel_quota_scale: 0.5
+
+    runtime_log:
+      summary_interval_frames: 1000000
+      sensor_debug: false
+      console_enable: false
+      csv_enable: true
+      csv_append: false
+      csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/geode_inland_waterways_short_gamma/results/adaptive_runtime.csv"

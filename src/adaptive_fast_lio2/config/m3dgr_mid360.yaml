@@ -25,10 +25,17 @@ adaptive_fastlio_mapping:
       map_en: true
 
     mapping:
-      gyr_cov: 0.1
-      acc_cov: 0.1
-      b_gyr_cov: 0.0001
-      b_acc_cov: 0.0001
+      # gyr_cov: 0.1                       # 原通用 FAST-LIO2 调参值；对 Mid360 官方标定噪声过大。
+      # acc_cov: 0.1
+      # b_gyr_cov: 0.0001
+      # b_acc_cov: 0.0001
+      # M3DGR Mid360 内置 IMU 的官方平均轴噪声平方（本代码直接将其写入过程噪声矩阵 Q）。
+      # gyr_n=1.325454072e-3, acc_n=1.147238239e-2,
+      # gyr_w=5.202629253e-5, acc_w=3.339756458e-4.
+      gyr_cov: 1.756828447e-6
+      acc_cov: 1.316155589e-4
+      b_gyr_cov: 2.706735169e-9
+      b_acc_cov: 1.115397337e-7
       filter_size_surf: 0.5
       filter_size_map: 0.5
 
@@ -55,7 +62,8 @@ adaptive_fastlio_mapping:
       local_map_delete_enable: true
 
     adaptive_map:
-      enable: false                         # 是否启用 idea 模块的退化感知地图更新；false 时尽量保持原 FAST-LIO2 入图行为。
+      # enable: false                       # 原始基线：关闭 idea 模块，保持 FAST-LIO2 默认入图行为。
+      enable: true                          # Corridor02 实验：启用点质量过滤、单帧退化判断和滑动窗口状态机。
       min_effective_points: 200             # 单帧有效点到面约束数量下限，低于该值认为当前帧约束不足。
       min_range: 0.5                        # 允许入图的最小 LiDAR 量程，过滤过近点和盲区附近不稳定点。
       max_range: 80.0                       # 允许入图的最大 LiDAR 量程，过滤远距离噪声和稀疏弱约束点。
@@ -72,6 +80,8 @@ adaptive_fastlio_mapping:
     runtime_log:
       summary_interval_frames: 10
       sensor_debug: false
-      csv_enable: false
+      # csv_enable: false                   # 原始基线：不记录逐帧统计。
+      csv_enable: true                      # Corridor02：保存退化状态、质量过滤和滑动窗口统计。
       csv_append: false
-      csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/m3dgr_corridor02/results/adaptive_off_runtime.csv"
+      # csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/m3dgr_corridor02/results/adaptive_off_runtime.csv"  # 原始基线日志。
+      csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/m3dgr_corridor02/results/adaptive_runtime.csv"      # 启用模块后的运行日志。

@@ -1,0 +1,77 @@
+/**:
+  ros__parameters:
+    # GEODE Tunneling_tunnel2 alpha：VLP-16 点云与 Xsens MTi-30 IMU。
+    pointCloudTopic: "/velodyne_points"
+    imuTopic: "/imu/data"
+    odomTopic: "odometry/imu"
+    gpsTopic: "odometry/gpsz"
+
+    lidarFrame: "base_link"
+    baselinkFrame: "base_link"
+    odometryFrame: "odom"
+    mapFrame: "map"
+
+    useImuHeadingInitialization: false
+    useGpsElevation: false
+    gpsCovThreshold: 2.0
+    poseCovThreshold: 25.0
+    savePCD: false
+    savePCDDirectory: "/Downloads/LOAM/"
+
+    sensor: velodyne
+    N_SCAN: 16
+    # 原始 PointCloud2 的 width=1800；LIO-SAM 的 range image 使用同一水平分辨率。
+    Horizon_SCAN: 1800
+    downsampleRate: 1
+    lidarMinRange: 0.5
+    lidarMaxRange: 100.0
+
+    # GEODE alpha_config.yaml 提供的标准差与随机游走。
+    imuAccNoise: 1.0481546278947311e-02
+    imuGyrNoise: 9.6690835928856730e-03
+    imuAccBiasN: 1.8451561389195461e-04
+    imuGyrBiasN: 8.2887875865635737e-05
+    imuGravity: 9.80511
+    imuRPYWeight: 0.01
+
+    # 官方标定为 LiDAR -> IMU：p_imu = R_LI p_lidar + t_LI。
+    # LIO-SAM 需要 IMU -> LiDAR 的旋转来变换陀螺仪、加速度和 IMU 姿态：R_IL = R_LI^T。
+    extrinsicRot: [ 0.9989892, -0.0446353,  0.0053164,
+                     0.0444870,  0.9986885,  0.0253410,
+                    -0.0064406, -0.0250789,  0.9996647]
+    extrinsicRPY: [ 0.9989892, -0.0446353,  0.0053164,
+                     0.0444870,  0.9986885,  0.0253410,
+                    -0.0064406, -0.0250789,  0.9996647]
+    # IMU 原点在 LiDAR 系：t_IL = -R_LI^T t_LI。
+    extrinsicTrans: [-0.015152, 0.084730, -0.062513]
+
+    edgeThreshold: 1.0
+    surfThreshold: 0.1
+    edgeFeatureMinValidNum: 10
+    surfFeatureMinValidNum: 100
+
+    odometrySurfLeafSize: 0.4
+    mappingCornerLeafSize: 0.2
+    mappingSurfLeafSize: 0.4
+    z_tollerance: 1000.0
+    rotation_tollerance: 1000.0
+
+    numberOfCores: 4
+    mappingProcessInterval: 0.15
+    surroundingkeyframeAddingDistThreshold: 1.0
+    surroundingkeyframeAddingAngleThreshold: 0.2
+    surroundingKeyframeDensity: 2.0
+    surroundingKeyframeSearchRadius: 50.0
+
+    # 首轮仅评估 LIO-SAM 前端/局部图优化能力，不让回环掩盖问题。
+    loopClosureEnableFlag: false
+    loopClosureFrequency: 1.0
+    surroundingKeyframeSize: 50
+    historyKeyframeSearchRadius: 15.0
+    historyKeyframeSearchTimeDiff: 30.0
+    historyKeyframeSearchNum: 25
+    historyKeyframeFitnessScore: 0.3
+
+    globalMapVisualizationSearchRadius: 1000.0
+    globalMapVisualizationPoseDensity: 10.0
+    globalMapVisualizationLeafSize: 1.0

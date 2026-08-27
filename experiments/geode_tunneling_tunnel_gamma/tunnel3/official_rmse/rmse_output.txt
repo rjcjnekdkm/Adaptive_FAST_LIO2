@@ -1,0 +1,38 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel3/official_rmse/adaptive_backend_leica.txt:
+--------------------------------------------------------------------------------
+Loaded 256 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel3/official_rmse/adaptive_backend_leica.txt
+Loaded 478 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel3/official_rmse/leica_ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 121 of max. 256 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel3/official_rmse/adaptive_backend_leica.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel3/official_rmse/leica_ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.0 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.44308065  0.89647573  0.00328717]
+ [-0.88850462 -0.43864699 -0.13471584]
+ [-0.11932757 -0.06261065  0.99087882]]
+Translation of alignment:
+[-166.57613971  179.79624915   13.79785334]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 121 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	44.652750
+      mean	27.935306
+    median	29.855911
+       min	0.341595
+      rmse	30.415920
+       sse	111940.507990
+       std	12.031079
+
+
+Extracted RMSE: 30.41592
+Average RMSE: 30.41592
+ The minimum min_rmse is 30.41592

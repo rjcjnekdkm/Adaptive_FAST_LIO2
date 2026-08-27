@@ -1,0 +1,1 @@
+time,current_id,candidate_id,scan_context_distance,icp_fitness,threshold,trans_error,yaw_error,degenerate_pair,accepted,target_points,source_points,reason

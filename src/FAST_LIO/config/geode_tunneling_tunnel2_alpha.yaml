@@ -1,0 +1,51 @@
+/**:
+  ros__parameters:
+    # 原始 FAST-LIO2 对照：与 Adaptive 基线使用同一份 GEODE alpha 原始传感器数据。
+    feature_extract_enable: false
+    point_filter_num: 1
+    max_iteration: 3
+    filter_size_surf: 0.5
+    filter_size_map: 0.5
+    cube_side_length: 1000.0
+    runtime_pos_log_enable: false
+    map_file_path: "./geode_tunneling_tunnel2_alpha_fastlio.pcd"
+
+    common:
+      lid_topic: "/velodyne_points"
+      imu_topic: "/imu/data"
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      lidar_type: 2
+      scan_line: 16
+      scan_rate: 10
+      # 原始点云 time 范围约 [-0.098, 0.001]，单位为秒。
+      timestamp_unit: 0
+      blind: 0.5
+
+    mapping:
+      acc_cov: 0.1
+      gyr_cov: 0.1
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
+      fov_degree: 360.0
+      det_range: 100.0
+      extrinsic_est_en: false
+      # GEODE alpha_config.yaml：p_imu = R * p_lidar + t。
+      extrinsic_T: [0.010965, -0.086864, 0.060426]
+      extrinsic_R: [0.9989892, 0.0444870, -0.0064406,
+                    -0.0446353, 0.9986885, -0.0250789,
+                    0.0053164, 0.0253410, 0.9996647]
+
+    publish:
+      path_en: true
+      effect_map_en: false
+      map_en: true
+      scan_publish_en: true
+      dense_publish_en: false
+      scan_bodyframe_pub_en: true
+
+    pcd_save:
+      pcd_save_en: false
+      interval: -1

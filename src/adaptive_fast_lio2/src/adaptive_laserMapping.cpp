@@ -2899,7 +2899,9 @@ private:
 
         std_msgs::msg::Float64MultiArray msg;
         msg.data.resize(15, 0.0);
-        msg.data[0] = meas.lidar_beg_time;
+        // 后端关键帧点云 /cloud_registered_body 使用 lidar_end_time。
+        // 退化先验必须使用同一帧末时刻，避免后端将其错配到相邻关键帧。
+        msg.data[0] = meas.lidar_end_time;
         msg.data[1] = static_cast<double>(current_degeneracy_mode);
         msg.data[2] = previous_frame_degenerate ? 1.0 : 0.0;
         msg.data[3] = frame_effective_ratio;
@@ -2978,7 +2980,10 @@ private:
     {
         nav_msgs::msg::Odometry odom;
 
-        odom.header.stamp = get_ros_time(meas.lidar_beg_time);
+        // 与 /cloud_registered_body 的时间戳严格对齐。
+        // 点云在整帧去畸变完成后发布，代表 lidar_end_time 的状态；若 Odometry
+        // 仍标为 lidar_beg_time，后端会把上一帧 body 点云匹配给当前帧位姿。
+        odom.header.stamp = get_ros_time(meas.lidar_end_time);
         odom.header.frame_id = "camera_init";
         odom.child_frame_id = "body";
 
@@ -3001,7 +3006,8 @@ private:
     void publish_path(const MeasureGroup &meas)
     {
         geometry_msgs::msg::PoseStamped pose;
-        pose.header.stamp = get_ros_time(meas.lidar_beg_time);
+        // Path 与 Odometry/关键帧点云采用同一帧末时刻，便于轨迹记录和后端同步。
+        pose.header.stamp = get_ros_time(meas.lidar_end_time);
         pose.header.frame_id = "camera_init";
 
         pose.pose.position.x = state_point.pos.x();
