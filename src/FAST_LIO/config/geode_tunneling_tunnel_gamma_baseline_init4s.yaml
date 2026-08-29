@@ -1,8 +1,8 @@
 laser_mapping:
   ros__parameters:
-    # GEODE Gamma device: Livox AVIA + external Xsens MTi-30.
-    # This is an original FAST-LIO2 baseline configuration: no adaptive map
-    # update and no custom backend are involved in this launch.
+    # Controlled comparison only: identical to the original GEODE Gamma
+    # FAST-LIO2 baseline, except that IMU initialization is extended to 4 s
+    # to match Adaptive FAST-LIO2's imu_init_num: 400 at 100 Hz.
     feature_extract_enable: false
     point_filter_num: 3
     max_iteration: 3
@@ -10,7 +10,7 @@ laser_mapping:
     filter_size_map: 0.5
     cube_side_length: 1000.0
     runtime_pos_log_enable: false
-    map_file_path: "./geode_tunneling_tunnel_gamma_fastlio.pcd"
+    map_file_path: "./geode_tunneling_tunnel_gamma_fastlio_init4s.pcd"
 
     common:
       lid_topic: "/livox/lidar"
@@ -24,16 +24,15 @@ laser_mapping:
       blind: 4.0
 
     mapping:
-      # Original FAST-LIO2 AVIA process-noise covariance; used as the
-      # common default for FAST-LIO2 and Adaptive FAST-LIO2 comparisons.
       acc_cov: 0.1
       gyr_cov: 0.1
       b_acc_cov: 0.0001
       b_gyr_cov: 0.0001
+      # This is the only experimental change relative to the original
+      # FAST-LIO2 baseline configuration.
+      imu_init_time: 4.0
       fov_degree: 90.0
-      det_range: 450.0
-
-      # GEODE gamma.yaml: p_imu = R * p_lidar + t.
+      det_range: 200.0
       extrinsic_est_en: false
       extrinsic_T: [0.049258, -0.012500, 0.026946]
       extrinsic_R: [0.999620, 0.027463, 0.002445,

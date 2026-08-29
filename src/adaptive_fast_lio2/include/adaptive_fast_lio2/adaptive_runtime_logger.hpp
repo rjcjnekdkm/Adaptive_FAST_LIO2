@@ -70,6 +70,8 @@ struct RuntimeLogRow
     int quality_rejected = 0;
     int invalid_quality_rejected = 0;
     int direction_rejected = 0;
+    // Persistent 总入图配额导致的拒绝数；用于验证持续退化策略是否真实生效。
+    int persistent_quota_rejected = 0;
     int novel_accepted = 0;
     int novel_rejected = 0;
     int voxel_rejected = 0;
@@ -80,6 +82,7 @@ struct RuntimeLogRow
     std::uint64_t total_map_added = 0;
     std::uint64_t total_quality_rejected = 0;
     std::uint64_t total_direction_rejected = 0;
+    std::uint64_t total_persistent_quota_rejected = 0;
     std::uint64_t total_voxel_rejected = 0;
 };
 

@@ -21,17 +21,22 @@ def generate_launch_description():
     rviz_use = LaunchConfiguration("rviz")
     rviz_cfg = LaunchConfiguration("rviz_cfg")
     backend_use = LaunchConfiguration("backend")
+    keyframe_distance = LaunchConfiguration("keyframe_distance")
+    keyframe_yaw = LaunchConfiguration("keyframe_yaw")
     loop_current_cooldown_keyframes = LaunchConfiguration("loop_current_cooldown_keyframes")
     loop_candidate_cooldown_keyframes = LaunchConfiguration("loop_candidate_cooldown_keyframes")
     loop_pair_cooldown_keyframes = LaunchConfiguration("loop_pair_cooldown_keyframes")
     sync_queue_size = LaunchConfiguration("sync_queue_size")
     backend_tum_path = LaunchConfiguration("backend_tum_path")
+    backend_full_tum_path = LaunchConfiguration("backend_full_tum_path")
     backend_loop_csv_path = LaunchConfiguration("backend_loop_csv_path")
     backend_log_enable = LaunchConfiguration("backend_log_enable")
     publish_optimized_map = LaunchConfiguration("publish_optimized_map")
     optimized_map_publish_interval = LaunchConfiguration("optimized_map_publish_interval")
     optimized_map_leaf_size = LaunchConfiguration("optimized_map_leaf_size")
     frontend_runtime_csv_path = LaunchConfiguration("frontend_runtime_csv_path")
+    adaptive_map_enable = LaunchConfiguration("adaptive_map_enable")
+    adaptive_window_enable = LaunchConfiguration("adaptive_window_enable")
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
@@ -69,6 +74,18 @@ def generate_launch_description():
         description="Run degenerate-aware loop backend if true"
     )
 
+    declare_keyframe_distance_cmd = DeclareLaunchArgument(
+        "keyframe_distance",
+        default_value="0.5",
+        description="Backend keyframe translation threshold in meters"
+    )
+
+    declare_keyframe_yaw_cmd = DeclareLaunchArgument(
+        "keyframe_yaw",
+        default_value="0.10",
+        description="Backend keyframe yaw threshold in radians"
+    )
+
     declare_loop_current_cooldown_cmd = DeclareLaunchArgument(
         "loop_current_cooldown_keyframes",
         default_value="10",
@@ -101,6 +118,19 @@ def generate_launch_description():
             "adaptive_backend_optimized.tum"
         ),
         description="TUM output path for optimized backend trajectory"
+    )
+
+    declare_backend_full_tum_path_cmd = DeclareLaunchArgument(
+        "backend_full_tum_path",
+        default_value=(
+            "/home/romi/Adaptive_FAST_LIO2/experiments/"
+            "subt_mrs_hawkins_long_corridor/results/"
+            "adaptive_backend_optimized_full.tum"
+        ),
+        description=(
+            "Full-rate TUM trajectory after propagating optimized keyframe "
+            "corrections to all frontend odometry samples"
+        )
     )
 
     declare_backend_loop_csv_path_cmd = DeclareLaunchArgument(
@@ -146,6 +176,18 @@ def generate_launch_description():
         description="CSV output path for frontend runtime/degradation statistics"
     )
 
+    declare_adaptive_map_enable_cmd = DeclareLaunchArgument(
+        "adaptive_map_enable",
+        default_value="true",
+        description="Enable adaptive point-quality filtering and map insertion control"
+    )
+
+    declare_adaptive_window_enable_cmd = DeclareLaunchArgument(
+        "adaptive_window_enable",
+        default_value="true",
+        description="Enable sliding-window persistent-degeneracy state machine"
+    )
+
     adaptive_lio_node = Node(
         package="adaptive_fast_lio2",
         executable="adaptive_fastlio_mapping",
@@ -153,7 +195,9 @@ def generate_launch_description():
         parameters=[
             PathJoinSubstitution([config_path, config_file]),
             {"use_sim_time": use_sim_time},
-            {"runtime_log.csv_path": frontend_runtime_csv_path}
+            {"runtime_log.csv_path": frontend_runtime_csv_path},
+            {"adaptive_map.enable": adaptive_map_enable},
+            {"adaptive_window.enable": adaptive_window_enable}
         ],
         output="screen"
     )
@@ -171,11 +215,14 @@ def generate_launch_description():
         name="adaptive_degenerate_backend",
         parameters=[
             {"use_sim_time": use_sim_time},
+            {"keyframe_distance": keyframe_distance},
+            {"keyframe_yaw": keyframe_yaw},
             {"loop_current_cooldown_keyframes": loop_current_cooldown_keyframes},
             {"loop_candidate_cooldown_keyframes": loop_candidate_cooldown_keyframes},
             {"loop_pair_cooldown_keyframes": loop_pair_cooldown_keyframes},
             {"sync_queue_size": sync_queue_size},
             {"backend_tum_path": backend_tum_path},
+            {"backend_full_tum_path": backend_full_tum_path},
             {"backend_loop_csv_path": backend_loop_csv_path},
             {"backend_log_enable": backend_log_enable},
             {"publish_optimized_map": publish_optimized_map},
@@ -193,17 +240,22 @@ def generate_launch_description():
     ld.add_action(declare_rviz_cmd)
     ld.add_action(declare_rviz_config_path_cmd)
     ld.add_action(declare_backend_cmd)
+    ld.add_action(declare_keyframe_distance_cmd)
+    ld.add_action(declare_keyframe_yaw_cmd)
     ld.add_action(declare_loop_current_cooldown_cmd)
     ld.add_action(declare_loop_candidate_cooldown_cmd)
     ld.add_action(declare_loop_pair_cooldown_cmd)
     ld.add_action(declare_sync_queue_cmd)
     ld.add_action(declare_backend_tum_path_cmd)
+    ld.add_action(declare_backend_full_tum_path_cmd)
     ld.add_action(declare_backend_loop_csv_path_cmd)
     ld.add_action(declare_backend_log_enable_cmd)
     ld.add_action(declare_publish_optimized_map_cmd)
     ld.add_action(declare_optimized_map_publish_interval_cmd)
     ld.add_action(declare_optimized_map_leaf_size_cmd)
     ld.add_action(declare_frontend_runtime_csv_path_cmd)
+    ld.add_action(declare_adaptive_map_enable_cmd)
+    ld.add_action(declare_adaptive_window_enable_cmd)
 
     ld.add_action(adaptive_lio_node)
     ld.add_action(adaptive_backend_node)

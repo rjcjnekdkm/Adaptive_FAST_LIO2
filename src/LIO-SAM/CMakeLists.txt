@@ -16,6 +16,7 @@ find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(livox_ros_driver2 REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(pcl_msgs REQUIRED)
@@ -63,6 +64,9 @@ endif()
 add_executable(liosam_runtime_recorder src/liosam_runtime_recorder.cpp)
 ament_target_dependencies(liosam_runtime_recorder rclcpp nav_msgs sensor_msgs)
 
+add_executable(liosam_livox_adapter src/livox_custommsg_to_pointcloud2.cpp)
+ament_target_dependencies(liosam_livox_adapter rclcpp sensor_msgs livox_ros_driver2)
+
 
 install(
   DIRECTORY launch
@@ -96,6 +100,11 @@ install(
 
 install(
   TARGETS liosam_runtime_recorder
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(
+  TARGETS liosam_livox_adapter
   DESTINATION lib/${PROJECT_NAME}
 )
 

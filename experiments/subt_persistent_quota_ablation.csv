@@ -1,0 +1,7 @@
+configuration,run,ate_rmse_m,persistent_frames,persistent_map_added,persistent_quota_rejected,persistent_max_map_added
+no_total_quota,run1,1.452073,148,3560,0,113
+no_total_quota,run2,1.498851,132,2743,0,120
+no_total_quota,run3,1.459686,156,3934,0,112
+strong_quota_2_to_5,run1,1.423133,120,600,2927,5
+strong_quota_2_to_5,run2,1.477239,131,655,2950,5
+strong_quota_2_to_5,run3,1.432481,139,695,3127,5

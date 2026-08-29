@@ -1,0 +1,80 @@
+/**:
+  ros__parameters:
+    # GEODE Gamma: Livox AVIA CustomMsg is converted by liosam_livox_adapter.
+    pointCloudTopic: "/livox/points_lio_sam"
+    imuTopic: "/imu/data"
+    odomTopic: "odometry/imu"
+    gpsTopic: "odometry/gpsz"
+
+    # Keep lidarFrame equal to baselinkFrame: LIO-SAM's supplied URDF publishes
+    # base_link but has no livox_frame TF.  The calibrated IMU->LiDAR transform
+    # below still defines the physical sensor relationship used by the estimator.
+    lidarFrame: "base_link"
+    baselinkFrame: "base_link"
+    odometryFrame: "odom"
+    mapFrame: "map"
+
+    useImuHeadingInitialization: false
+    useGpsElevation: false
+    gpsCovThreshold: 2.0
+    poseCovThreshold: 25.0
+    savePCD: false
+    savePCDDirectory: "/Downloads/LOAM/"
+
+    # LIO-SAM has a dedicated Livox projection branch.  GEODE Gamma is AVIA
+    # (six scan lines); the adapter supplies line -> ring and offset_time -> time.
+    sensor: livox
+    N_SCAN: 6
+    Horizon_SCAN: 4000
+    downsampleRate: 1
+    lidarMinRange: 1.0
+    lidarMaxRange: 200.0
+
+    # GEODE Gamma calibration values are standard deviations, matching the
+    # quantities expected by LIO-SAM's IMU preintegration parameters.
+    imuAccNoise: 5.5741025513357766e-03
+    imuGyrNoise: 5.1441059541810427e-03
+    imuAccBiasN: 1.2078671772058479e-04
+    imuGyrBiasN: 1.0881627554710405e-04
+    imuGravity: 9.80511
+    imuRPYWeight: 0.01
+
+    # GEODE supplies T_IMU_LiDAR: p_imu = R_LI p_lidar + t_LI.
+    # LIO-SAM consumes IMU -> LiDAR, hence R_IL = R_LI^T and t_IL = -R_LI^T t_LI.
+    extrinsicRot: [ 0.999620, -0.027517, -0.001746,
+                     0.027463,  0.999299, -0.025456,
+                     0.002445,  0.025398,  0.999674 ]
+    extrinsicRPY: [ 0.999620, -0.027517, -0.001746,
+                     0.027463,  0.999299, -0.025456,
+                     0.002445,  0.025398,  0.999674 ]
+    extrinsicTrans: [-0.049536, 0.011824, -0.026740]
+
+    edgeThreshold: 1.0
+    surfThreshold: 0.1
+    edgeFeatureMinValidNum: 10
+    surfFeatureMinValidNum: 100
+
+    odometrySurfLeafSize: 0.4
+    mappingCornerLeafSize: 0.2
+    mappingSurfLeafSize: 0.4
+    z_tollerance: 1000.0
+    rotation_tollerance: 1000.0
+
+    numberOfCores: 4
+    mappingProcessInterval: 0.15
+    surroundingkeyframeAddingDistThreshold: 1.0
+    surroundingkeyframeAddingAngleThreshold: 0.2
+    surroundingKeyframeDensity: 2.0
+    surroundingKeyframeSearchRadius: 50.0
+
+    loopClosureEnableFlag: false
+    loopClosureFrequency: 1.0
+    surroundingKeyframeSize: 50
+    historyKeyframeSearchRadius: 15.0
+    historyKeyframeSearchTimeDiff: 30.0
+    historyKeyframeSearchNum: 25
+    historyKeyframeFitnessScore: 0.3
+
+    globalMapVisualizationSearchRadius: 1000.0
+    globalMapVisualizationPoseDensity: 10.0
+    globalMapVisualizationLeafSize: 1.0

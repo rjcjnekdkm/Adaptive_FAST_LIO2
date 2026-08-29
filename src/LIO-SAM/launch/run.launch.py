@@ -15,6 +15,10 @@ def generate_launch_description():
     runtime_recorder = LaunchConfiguration('runtime_recorder')
     runtime_csv_path = LaunchConfiguration('runtime_csv_path')
     runtime_csv_append = LaunchConfiguration('runtime_csv_append')
+    livox_adapter = LaunchConfiguration('livox_adapter')
+    livox_input_topic = LaunchConfiguration('livox_input_topic')
+    livox_output_topic = LaunchConfiguration('livox_output_topic')
+    livox_scan_lines = LaunchConfiguration('livox_scan_lines')
     xacro_path = os.path.join(share_dir, 'config', 'robot.urdf.xacro')
     rviz_config_file = os.path.join(share_dir, 'config', 'rviz2.rviz')
 
@@ -48,6 +52,22 @@ def generate_launch_description():
         default_value='false',
         description='Append to the runtime CSV instead of truncating it.')
 
+    livox_adapter_declare = DeclareLaunchArgument(
+        'livox_adapter', default_value='false',
+        description='Convert Livox CustomMsg into PointCloud2 for LIO-SAM.')
+
+    livox_input_topic_declare = DeclareLaunchArgument(
+        'livox_input_topic', default_value='/livox/lidar',
+        description='Livox CustomMsg input topic.')
+
+    livox_output_topic_declare = DeclareLaunchArgument(
+        'livox_output_topic', default_value='/livox/points_lio_sam',
+        description='PointXYZIRT PointCloud2 output topic.')
+
+    livox_scan_lines_declare = DeclareLaunchArgument(
+        'livox_scan_lines', default_value='6',
+        description='Number of Livox scan lines carried into the ring field.')
+
     print("urdf_file_name : {}".format(xacro_path))
 
     return LaunchDescription([
@@ -56,6 +76,23 @@ def generate_launch_description():
         runtime_recorder_declare,
         runtime_csv_path_declare,
         runtime_csv_append_declare,
+        livox_adapter_declare,
+        livox_input_topic_declare,
+        livox_output_topic_declare,
+        livox_scan_lines_declare,
+        Node(
+            package='lio_sam',
+            executable='liosam_livox_adapter',
+            name='liosam_livox_adapter',
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'input_topic': livox_input_topic,
+                'output_topic': livox_output_topic,
+                'scan_lines': livox_scan_lines,
+            }],
+            condition=IfCondition(livox_adapter),
+            output='screen'
+        ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',

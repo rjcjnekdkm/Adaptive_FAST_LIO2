@@ -226,6 +226,18 @@ struct KeyFrame
     std::vector<float> sector_key;
 };
 
+/**
+ * @brief 前端全频里程计样本。
+ *
+ * Pose graph 只优化关键帧；实验评测则需要与真值同时间密度的轨迹。该结构保存
+ * 每一帧前端位姿，供后端在优化后将最近关键帧的图优化校正传播到全频轨迹。
+ */
+struct OdomSample
+{
+    rclcpp::Time stamp;
+    gtsam::Pose3 odom_pose;
+};
+
 }  // namespace
 
 class AdaptiveDegenerateBackend : public rclcpp::Node
@@ -334,13 +346,22 @@ public:
         backend_tum_path_ = declare_parameter<std::string>(
             "backend_tum_path",
             "/home/romi/Adaptive_FAST_LIO2/experiments/subt_mrs_hawkins_long_corridor/results/adaptive_backend_optimized.tum");
+        // 全频优化轨迹：将关键帧图优化校正传播到每一条前端 odometry。
+        // 它是与 FAST-LIO2、前端消融进行公平 ATE 对比时应使用的结果；
+        // backend_tum_path 仍保留关键帧轨迹，便于检查 pose graph 本身。
+        backend_full_tum_path_ = declare_parameter<std::string>(
+            "backend_full_tum_path",
+            "/home/romi/Adaptive_FAST_LIO2/experiments/subt_mrs_hawkins_long_corridor/results/adaptive_backend_optimized_full.tum");
         backend_loop_csv_path_ = declare_parameter<std::string>(
             "backend_loop_csv_path",
             "/home/romi/Adaptive_FAST_LIO2/experiments/subt_mrs_hawkins_long_corridor/results/adaptive_backend_loops.csv");
 
         // 前端位姿输入：用于关键帧位姿初值和 odometry factor。
+        // 回环 ICP 与 iSAM2 优化会暂时占用回调线程。GEODE Gamma 的 odometry
+        // 约为 10 Hz；保留至少 300 条（约 30 s）可覆盖实测约 15 s 的积压，
+        // 又避免使用过大的离线缓存。避免尾段位姿被 DDS 丢弃而使后端 ATE 少匹配真值。
         sub_odom_ = create_subscription<nav_msgs::msg::Odometry>(
-            "/Odometry", 100,
+            "/Odometry", rclcpp::QoS(std::max<size_t>(300, sync_queue_size_)),
             std::bind(&AdaptiveDegenerateBackend::odomHandler, this, std::placeholders::_1));
         // 当前帧点云输入：用于保存关键帧、生成 ScanContext、ICP 回环验证。
         sub_cloud_ = create_subscription<sensor_msgs::msg::PointCloud2>(
@@ -413,10 +434,20 @@ private:
                 backend_tum_path_.c_str());
         }
 
+        std::ofstream full_tum(backend_full_tum_path_, std::ios::out | std::ios::trunc);
+        if (!full_tum.is_open())
+        {
+            RCLCPP_WARN(
+                get_logger(),
+                "Cannot open backend full-rate TUM file: %s",
+                backend_full_tum_path_.c_str());
+        }
+
         RCLCPP_INFO(
             get_logger(),
-            "Backend logs -> TUM: %s, loops: %s",
+            "Backend logs -> keyframe TUM: %s, full-rate TUM: %s, loops: %s",
             backend_tum_path_.c_str(),
+            backend_full_tum_path_.c_str(),
             backend_loop_csv_path_.c_str());
     }
 
@@ -497,6 +528,67 @@ private:
     }
 
     /**
+     * @brief 将 pose graph 的关键帧校正传播到全频前端轨迹并写为 TUM。
+     *
+     * 对每一帧前端位姿 T_front(t)，查找时间上最近的关键帧 k，并构造
+     *
+     *     Delta_k = T_opt_k * inv(T_odom_k),
+     *     T_full_opt(t) = Delta_k * T_front(t).
+     *
+     * 这保证关键帧处严格等于 GTSAM 优化结果，同时为全部前端时间戳提供后端
+     * 校正后的位姿。相比只输出稀疏关键帧，官方 ATE 可与前端方法公平同步。
+     */
+    void writeOptimizedFullTum() const
+    {
+        if (!backend_log_enable_ || backend_full_tum_path_.empty() ||
+            odom_samples_.empty() || keyframes_.empty())
+        {
+            return;
+        }
+
+        std::ofstream tum(backend_full_tum_path_, std::ios::out | std::ios::trunc);
+        if (!tum.is_open())
+        {
+            return;
+        }
+
+        tum << std::fixed << std::setprecision(9);
+        size_t keyframe_index = 0;
+        for (const auto &sample : odom_samples_)
+        {
+            const double sample_time = sample.stamp.seconds();
+            while (keyframe_index + 1 < keyframes_.size() &&
+                   keyframes_[keyframe_index + 1].stamp.seconds() <= sample_time)
+            {
+                ++keyframe_index;
+            }
+
+            // 在相邻两关键帧之间选择时间更近的一个，减小分段校正造成的误差。
+            size_t nearest_index = keyframe_index;
+            if (keyframe_index + 1 < keyframes_.size())
+            {
+                const double left_dt = std::abs(sample_time - keyframes_[keyframe_index].stamp.seconds());
+                const double right_dt = std::abs(keyframes_[keyframe_index + 1].stamp.seconds() - sample_time);
+                if (right_dt < left_dt)
+                {
+                    nearest_index = keyframe_index + 1;
+                }
+            }
+
+            const auto &anchor = keyframes_[nearest_index];
+            const gtsam::Pose3 correction =
+                anchor.optimized_pose.compose(anchor.odom_pose.inverse());
+            const gtsam::Pose3 optimized_pose = correction.compose(sample.odom_pose);
+            const auto t = optimized_pose.translation();
+            const auto q = optimized_pose.rotation().toQuaternion().normalized();
+            tum << sample_time << " "
+                << t.x() << " " << t.y() << " " << t.z() << " "
+                << q.x() << " " << q.y() << " " << q.z() << " " << q.w()
+                << "\n";
+        }
+    }
+
+    /**
      * @brief 缓存点云消息，供 odometry 按时间戳寻找最近帧。
      *
      * 不能只保存 latest cloud：当回放速率或回调调度变化时，最新点云可能
@@ -564,6 +656,14 @@ private:
      */
     void odomHandler(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
+        // 无论本帧能否与点云同步成关键帧，都保留其前端位姿，供全频后端
+        // 优化轨迹导出使用。重复时间戳不重复记录。
+        const rclcpp::Time odom_stamp(msg->header.stamp);
+        if (odom_samples_.empty() || odom_stamp > odom_samples_.back().stamp)
+        {
+            odom_samples_.push_back({odom_stamp, odomToPose3(*msg)});
+        }
+
         Cloud::Ptr cloud(new Cloud());
         DegeneracyInfo degeneracy;
         {
@@ -1435,6 +1535,7 @@ private:
         pub_optimized_path_->publish(path);
         publishOptimizedMapIfNeeded();
         writeOptimizedTum();
+        writeOptimizedFullTum();
     }
 
     /**
@@ -1540,6 +1641,8 @@ private:
     gtsam::Values values_;
     // 后端维护的所有关键帧。
     std::vector<KeyFrame> keyframes_;
+    // 全部前端 odometry，用于输出全频后端校正轨迹，不参与 pose graph 建图。
+    std::vector<OdomSample> odom_samples_;
     // 已经接受的回环约束，用于避免同一 current_id 重复加回环。
     std::unordered_map<int, int> loop_index_container_;
     // 已接受回环对，用于执行 current/candidate/pair 三种冷却规则。
@@ -1579,6 +1682,7 @@ private:
     double last_keyframe_yaw_ = 0.0;
     bool backend_log_enable_ = true;
     std::string backend_tum_path_;
+    std::string backend_full_tum_path_;
     std::string backend_loop_csv_path_;
     std::ofstream loop_csv_;
     size_t last_published_map_keyframes_ = 0;

@@ -1,0 +1,9 @@
+# SubT Persistent 总入图配额消融覆盖文件。
+# 与 subt_mrs_hawkins_long_corridor.yaml 同时加载；仅关闭新增的总配额，
+# 保留点质量过滤、单帧退化、滑动窗口状态机及方向/novel 配额完全不变。
+adaptive_fastlio_mapping:
+  ros__parameters:
+    adaptive_window:
+      persistent_insert_quota_scale: 1.0
+      persistent_insert_quota_min: 0
+      persistent_insert_quota_max: 0

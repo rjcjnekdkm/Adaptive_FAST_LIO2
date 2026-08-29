@@ -89,6 +89,11 @@ adaptive_fastlio_mapping:
       exit_count_threshold: 5               # 连续不满足持续退化候选多少次后退出 Persistent 模式。
       persistent_direction_quota_scale: 0.5 # Persistent 模式下每个法向方向入图配额缩放比例。
       persistent_novel_quota_scale: 0.5     # Persistent 模式下 novel points 入图配额缩放比例。
+      # Persistent 总入图预算：在长走廊连续退化时，除上述方向/novel 限制外，
+      # 再限制一帧实际写入 iKD-Tree 的总点数，避免弱约束点持续累积。
+      persistent_insert_quota_scale: 0.3
+      persistent_insert_quota_min: 2
+      persistent_insert_quota_max: 5
 
     runtime_log:
       # summary_interval_frames: 10          # 原始值：每 10 帧输出一次前端 Runtime 终端日志。

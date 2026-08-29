@@ -1,0 +1,9 @@
+# SubT Persistent 总入图配额温和版本。
+# 与 subt_mrs_hawkins_long_corridor.yaml 同时加载，仅覆盖总入图预算：
+# 相比验证版 [2, 5] 放宽到 [2, 10]，以保留更多局部约束。
+adaptive_fastlio_mapping:
+  ros__parameters:
+    adaptive_window:
+      persistent_insert_quota_scale: 0.5
+      persistent_insert_quota_min: 2
+      persistent_insert_quota_max: 10

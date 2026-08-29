@@ -116,6 +116,7 @@ void AdaptiveRuntimeLogger::write(const RuntimeLogRow &row)
           << row.quality_rejected << ","
           << row.invalid_quality_rejected << ","
           << row.direction_rejected << ","
+          << row.persistent_quota_rejected << ","
           << row.novel_accepted << ","
           << row.novel_rejected << ","
           << row.voxel_rejected << ","
@@ -124,6 +125,7 @@ void AdaptiveRuntimeLogger::write(const RuntimeLogRow &row)
           << row.total_map_added << ","
           << row.total_quality_rejected << ","
           << row.total_direction_rejected << ","
+          << row.total_persistent_quota_rejected << ","
           << row.total_voxel_rejected
           << std::endl;
 }
@@ -157,9 +159,9 @@ void AdaptiveRuntimeLogger::writeHeader()
           << "window_residual_cv,window_path_length,window_yaw_change,"
           << "window_condition_number_mean,window_recent_degenerate_streak,"
           << "map_added,point_to_add,point_no_need_downsample,insert_ratio,"
-          << "quality_rejected,invalid_quality_rejected,direction_rejected,"
+          << "quality_rejected,invalid_quality_rejected,direction_rejected,persistent_quota_rejected,"
           << "novel_accepted,novel_rejected,voxel_rejected,total_rejected,"
           << "map_size,total_map_added,total_quality_rejected,"
-          << "total_direction_rejected,total_voxel_rejected"
+          << "total_direction_rejected,total_persistent_quota_rejected,total_voxel_rejected"
           << std::endl;
 }

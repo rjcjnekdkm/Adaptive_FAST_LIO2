@@ -1,17 +1,18 @@
 adaptive_fastlio_mapping:
   ros__parameters:
+    # Tunnel2 的滑动窗口 Persistent 验证配置。
+    # 除 adaptive_window 中两项由离线日志确定的参数外，其余均与
+    # geode_gamma.yaml 保持一致，不能替代正式主结果配置。
     common:
-      # GEODE Metro Tunnels / Tunneling_tunnel2_gamma：Livox AVIA + Xsens MTi-30。
       lid_topic: "/livox/lidar"
-      # 使用外置 Xsens 真正的 100 Hz IMU；不要使用 Livox 内置 /livox/imu。
       imu_topic: "/imu/data"
       time_sync_en: false
       time_offset_lidar_to_imu: 0.0
 
     preprocess:
-      lidar_type: 1                       # Livox CustomMsg。
-      scan_line: 6                        # AVIA 的 FAST-LIO2 配置。
-      timestamp_unit: 2                   # Livox 分支直接读取 offset_time。
+      lidar_type: 1
+      scan_line: 6
+      timestamp_unit: 2
       scan_rate: 10
       blind: 4.0
 
@@ -21,28 +22,22 @@ adaptive_fastlio_mapping:
     publish:
       scan_publish_en: true
       dense_publish_en: true
-      scan_bodyframe_pub_en: true         # 后端关键帧与回环的输入。
+      scan_bodyframe_pub_en: true
       map_en: true
 
     mapping:
-      # GEODE 官方 gamma.yaml 给出的是标准差；本实现向过程噪声矩阵 Q 写入方差。
-      # gyro_std=0.005144105954, acc_std=0.005574102551,
-      # gyro_rw=0.000108816276, acc_rw=0.000120786718。
-      gyr_cov: 0.0000264618260678
-      acc_cov: 0.0000310706192528
-      b_gyr_cov: 0.0000000118409818239
-      b_acc_cov: 0.0000000145894311777
-      imu_init_num: 400                   # Xsens 约 100 Hz，对应约 4 s 静止初始化。
+      gyr_cov: 0.1
+      acc_cov: 0.1
+      b_gyr_cov: 0.0001
+      b_acc_cov: 0.0001
+      imu_init_num: 400
       filter_size_surf: 0.5
       filter_size_map: 0.5
-
-      # 官方 T_IMU_LiDAR：p_imu = R * p_lidar + t。
       extrinsic_T: [0.049258, -0.012500, 0.026946]
       extrinsic_R: [0.999620, 0.027463, 0.002445,
                    -0.027517, 0.999299, 0.025398,
                    -0.001746, -0.025456, 0.999674]
-      extrinsic_est_en: false             # 已知外参固定，避免隧道退化时在线估计发散。
-
+      extrinsic_est_en: false
       nearest_search_num: 5
       nearest_sq_dist_threshold: 5.0
       plane_residual_threshold: 0.1
@@ -76,9 +71,14 @@ adaptive_fastlio_mapping:
       enable: true
       size: 20
       persistent_ratio_threshold: 0.5
-      normal_ratio_scale: 1.5
+      # 原配置：normal_ratio_scale: 1.5（阈值 0.03）。
+      # 离线扫描表明 Tunnel2 候选窗口最小值为 0.03022，放宽至 2.0
+      # （阈值 0.04）后才能通过该必要条件。
+      normal_ratio_scale: 2.0
       residual_stability_ratio: 0.5
-      min_motion: 2.0
+      # 原配置：min_motion: 2.0。保留窗口方向、连续帧和条件数约束，
+      # 仅降至 1.0 m，使短窗口内的直行退化段能够成为候选。
+      min_motion: 1.0
       max_yaw_change: 0.25
       min_recent_degenerate_streak: 2
       min_condition_number: 50.0
@@ -86,6 +86,11 @@ adaptive_fastlio_mapping:
       exit_count_threshold: 5
       persistent_direction_quota_scale: 0.5
       persistent_novel_quota_scale: 0.5
+      # 验证 Persistent 的执行动作：排序后的所有可入图点最多保留 5 个。
+      # Qp = clamp(round(0.3 * N_eff), 2, 5)。正式 geode_gamma.yaml 未启用此上限。
+      persistent_insert_quota_scale: 0.3
+      persistent_insert_quota_min: 2
+      persistent_insert_quota_max: 5
 
     runtime_log:
       summary_interval_frames: 1000000

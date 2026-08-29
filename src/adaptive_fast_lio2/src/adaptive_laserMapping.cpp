@@ -108,6 +108,7 @@ bool has_previous_degeneracy_mode = false;
 uint64_t total_map_added = 0;
 uint64_t total_quality_rejected = 0;
 uint64_t total_direction_rejected = 0;
+uint64_t total_persistent_quota_rejected = 0;
 uint64_t total_voxel_rejected = 0;
 size_t last_map_add_num = 0;
 
@@ -244,6 +245,11 @@ int adaptive_window_exit_count_threshold = 5;
 // 例如 0.5 表示长走廊/隧道中每个法向方向最多写入的点数减半。
 double adaptive_window_persistent_direction_quota_scale = 0.5;
 double adaptive_window_persistent_novel_quota_scale = 0.5;
+// Persistent 总入图配额：默认 max=0 表示不额外限制，保持既有正式实验行为。
+// 启用后 Qp = clamp(round(scale * N_eff), min, max)，候选点已按弱方向贡献/质量排序。
+double adaptive_window_persistent_insert_quota_scale = 1.0;
+int adaptive_window_persistent_insert_quota_min = 0;
+int adaptive_window_persistent_insert_quota_max = 0;
 
 enum class DegeneracyMode
 {
@@ -1257,6 +1263,7 @@ void write_runtime_log_row(
     int quality_rejected_num,
     int invalid_quality_rejected_num,
     int direction_rejected_num,
+    int persistent_quota_rejected_num,
     int novel_accepted_num,
     int novel_rejected_num,
     int voxel_rejected_num,
@@ -1311,6 +1318,7 @@ void write_runtime_log_row(
     row.quality_rejected = quality_rejected_num;
     row.invalid_quality_rejected = invalid_quality_rejected_num;
     row.direction_rejected = direction_rejected_num;
+    row.persistent_quota_rejected = persistent_quota_rejected_num;
     row.novel_accepted = novel_accepted_num;
     row.novel_rejected = novel_rejected_num;
     row.voxel_rejected = voxel_rejected_num;
@@ -1321,6 +1329,7 @@ void write_runtime_log_row(
     row.total_map_added = total_map_added;
     row.total_quality_rejected = total_quality_rejected;
     row.total_direction_rejected = total_direction_rejected;
+    row.total_persistent_quota_rejected = total_persistent_quota_rejected;
     row.total_voxel_rejected = total_voxel_rejected;
 
     runtime_logger.write(row);
@@ -1346,6 +1355,9 @@ bool allow_map_insert_point(
     int &quality_reject_num,
     int &invalid_quality_num,
     int &direction_reject_num,
+    int &persistent_quota_reject_num,
+    int &persistent_insert_accepted_num,
+    int persistent_insert_quota,
     int &novel_accept_num,
     int &novel_reject_num)
 {
@@ -1473,6 +1485,19 @@ bool allow_map_insert_point(
             return false;
         }
         bin_count++;
+    }
+
+    // Persistent 已确认当前处于持续退化。候选索引在 map_incremental() 中已按
+    // “有效约束优先、弱方向贡献优先、质量分数次之”排序；此处的全局上限因此
+    // 会优先保留稀缺方向的高价值点，而抑制后续冗余点与 novel 点。
+    if (persistent_mode && persistent_insert_quota > 0)
+    {
+        if (persistent_insert_accepted_num >= persistent_insert_quota)
+        {
+            persistent_quota_reject_num++;
+            return false;
+        }
+        persistent_insert_accepted_num++;
     }
 
     return true;
@@ -2065,10 +2090,23 @@ void map_incremental()
     int quality_rejected_num = 0;
     int invalid_quality_rejected_num = 0;
     int direction_rejected_num = 0;
+    int persistent_quota_rejected_num = 0;
     int novel_accepted_num = 0;
     int novel_rejected_num = 0;
     // 仅在当前帧内统计各法向方向已接纳的点数，防止单一方向约束大量写入地图。
     std::unordered_map<int, int> normal_bin_counts;
+    int persistent_insert_accepted_num = 0;
+    int persistent_insert_quota = 0;
+    if (current_degeneracy_mode == DegeneracyMode::Persistent &&
+        adaptive_window_persistent_insert_quota_max > 0)
+    {
+        const int scaled_quota = static_cast<int>(std::round(
+            adaptive_window_persistent_insert_quota_scale *
+            static_cast<double>(std::max(0, effct_feat_num))));
+        persistent_insert_quota = std::min(
+            adaptive_window_persistent_insert_quota_max,
+            std::max(adaptive_window_persistent_insert_quota_min, scaled_quota));
+    }
 
     std::vector<size_t> candidate_indices(feats_down_body->size());
     std::iota(candidate_indices.begin(), candidate_indices.end(), 0);
@@ -2195,6 +2233,9 @@ void map_incremental()
                 quality_rejected_num,
                 invalid_quality_rejected_num,
                 direction_rejected_num,
+                persistent_quota_rejected_num,
+                persistent_insert_accepted_num,
+                persistent_insert_quota,
                 novel_accepted_num,
                 novel_rejected_num);
 
@@ -2227,6 +2268,7 @@ void map_incremental()
     total_quality_rejected +=
         quality_rejected_num + invalid_quality_rejected_num + novel_rejected_num;
     total_direction_rejected += direction_rejected_num;
+    total_persistent_quota_rejected += persistent_quota_rejected_num;
     total_voxel_rejected += voxel_rejected_num;
 
     // 所有本帧和累计统计更新完成后再记录，保证 CSV 中各字段属于同一帧状态。
@@ -2238,6 +2280,7 @@ void map_incremental()
         quality_rejected_num,
         invalid_quality_rejected_num,
         direction_rejected_num,
+        persistent_quota_rejected_num,
         novel_accepted_num,
         novel_rejected_num,
         voxel_rejected_num,
@@ -2470,6 +2513,11 @@ public:
         this->declare_parameter<double>("adaptive_window.persistent_direction_quota_scale", 0.5);
         // Persistent 模式下，novel points 入图配额的缩放比例。
         this->declare_parameter<double>("adaptive_window.persistent_novel_quota_scale", 0.5);
+        // Persistent 总入图上限。max=0 时关闭，保持旧版行为；启用时按有效约束数
+        // 计算候选配额，并通过 min/max 进行夹紧。
+        this->declare_parameter<double>("adaptive_window.persistent_insert_quota_scale", 1.0);
+        this->declare_parameter<int>("adaptive_window.persistent_insert_quota_min", 0);
+        this->declare_parameter<int>("adaptive_window.persistent_insert_quota_max", 0);
 
         // ===================== 参数读取 =====================
         this->get_parameter("common.lid_topic", lid_topic);
@@ -2543,6 +2591,9 @@ public:
         this->get_parameter("adaptive_window.exit_count_threshold", adaptive_window_exit_count_threshold);
         this->get_parameter("adaptive_window.persistent_direction_quota_scale", adaptive_window_persistent_direction_quota_scale);
         this->get_parameter("adaptive_window.persistent_novel_quota_scale", adaptive_window_persistent_novel_quota_scale);
+        this->get_parameter("adaptive_window.persistent_insert_quota_scale", adaptive_window_persistent_insert_quota_scale);
+        this->get_parameter("adaptive_window.persistent_insert_quota_min", adaptive_window_persistent_insert_quota_min);
+        this->get_parameter("adaptive_window.persistent_insert_quota_max", adaptive_window_persistent_insert_quota_max);
 
         // 防御性修正：窗口长度和滞回计数至少为 1，避免配置错误导致除零或状态机失效。
         adaptive_window_size = std::max(1, adaptive_window_size);
