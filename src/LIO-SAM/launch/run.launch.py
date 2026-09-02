@@ -15,6 +15,7 @@ def generate_launch_description():
     runtime_recorder = LaunchConfiguration('runtime_recorder')
     runtime_csv_path = LaunchConfiguration('runtime_csv_path')
     runtime_csv_append = LaunchConfiguration('runtime_csv_append')
+    rviz = LaunchConfiguration('rviz')
     livox_adapter = LaunchConfiguration('livox_adapter')
     livox_input_topic = LaunchConfiguration('livox_input_topic')
     livox_output_topic = LaunchConfiguration('livox_output_topic')
@@ -52,6 +53,10 @@ def generate_launch_description():
         default_value='false',
         description='Append to the runtime CSV instead of truncating it.')
 
+    rviz_declare = DeclareLaunchArgument(
+        'rviz', default_value='true',
+        description='Start RViz visualization. Disable it for repeatable quantitative evaluation.')
+
     livox_adapter_declare = DeclareLaunchArgument(
         'livox_adapter', default_value='false',
         description='Convert Livox CustomMsg into PointCloud2 for LIO-SAM.')
@@ -76,6 +81,7 @@ def generate_launch_description():
         runtime_recorder_declare,
         runtime_csv_path_declare,
         runtime_csv_append_declare,
+        rviz_declare,
         livox_adapter_declare,
         livox_input_topic_declare,
         livox_output_topic_declare,
@@ -156,6 +162,7 @@ def generate_launch_description():
             name='rviz2',
             arguments=['-d', rviz_config_file],
             parameters=[{'use_sim_time': use_sim_time}],
+            condition=IfCondition(rviz),
             output='screen'
         )
     ])

@@ -2971,7 +2971,6 @@ private:
                 ? 0.0
                 : static_cast<double>(last_map_add_num) /
                       static_cast<double>(feats_down_body->size());
-
         pub_degeneracy_info_->publish(msg);
     }
 

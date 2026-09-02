@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdint>
 #include <deque>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iterator>
@@ -27,7 +28,9 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/common/point_tests.h>
 #include <pcl/common/transforms.h>
+#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
@@ -124,6 +127,100 @@ gtsam::Pose3 eigenToPose3(const Eigen::Matrix4f &tf)
 }
 
 /**
+ * @brief 回环 ICP 的附加质量指标。
+ *
+ * 前向 ICP fitness 只能说明“当前帧能否贴到候选子地图”，在长直隧道中
+ * 沿走廊方向仍可能缺少约束。因此额外记录：
+ * - reverse_fitness：反向 ICP 的 fitness；
+ * - reciprocal_*：正反 ICP 变换是否互为逆；
+ * - observability_*：点到点 ICP 线性化 Hessian 的 SVD 可观测性。
+ */
+struct LoopValidationMetrics
+{
+    double reverse_fitness = std::numeric_limits<double>::quiet_NaN();
+    double reciprocal_translation_error = std::numeric_limits<double>::quiet_NaN();
+    double reciprocal_yaw_error = std::numeric_limits<double>::quiet_NaN();
+    size_t observability_correspondences = 0;
+    double observability_condition_number = std::numeric_limits<double>::quiet_NaN();
+    double observability_min_singular_value = std::numeric_limits<double>::quiet_NaN();
+    double path_separation = std::numeric_limits<double>::quiet_NaN();
+};
+
+/**
+ * @brief 评估 ICP 约束的局部可观测性。
+ *
+ * 对前向 ICP 的最终 source->target 变换，将 source 点变换到 target 系，
+ * 与 target 最近邻构造点到点残差。其微分雅可比近似为
+ *
+ *     J = [ I  -[p]_x ],   H = sum(J^T J) / N .
+ *
+ * H 的最小奇异值越小、条件数越大，说明存在弱约束方向。它不替代 ICP，
+ * 而是用于拒绝“fitness 很小但几何上不可观测”的回环因子。
+ */
+LoopValidationMetrics evaluateLoopObservability(
+    const Cloud::ConstPtr &source,
+    const Cloud::ConstPtr &target,
+    const Eigen::Matrix4f &source_to_target,
+    double max_correspondence_distance)
+{
+    LoopValidationMetrics metrics;
+    if (!source || !target || source->empty() || target->empty())
+    {
+        return metrics;
+    }
+
+    pcl::KdTreeFLANN<PointType> kdtree;
+    kdtree.setInputCloud(target);
+    const float max_sq_distance = static_cast<float>(
+        max_correspondence_distance * max_correspondence_distance);
+    Eigen::Matrix<double, 6, 6> hessian = Eigen::Matrix<double, 6, 6>::Zero();
+    std::vector<int> indices(1);
+    std::vector<float> squared_distances(1);
+
+    for (const auto &point : source->points)
+    {
+        if (!pcl::isFinite(point))
+        {
+            continue;
+        }
+        const Eigen::Vector4f transformed = source_to_target * point.getVector4fMap();
+        PointType query;
+        query.x = transformed.x();
+        query.y = transformed.y();
+        query.z = transformed.z();
+        if (kdtree.nearestKSearch(query, 1, indices, squared_distances) != 1 ||
+            squared_distances.front() > max_sq_distance)
+        {
+            continue;
+        }
+
+        const Eigen::Vector3d p = transformed.head<3>().cast<double>();
+        Eigen::Matrix<double, 3, 6> jacobian = Eigen::Matrix<double, 3, 6>::Zero();
+        jacobian.block<3, 3>(0, 0).setIdentity();
+        jacobian.block<3, 3>(0, 3) <<
+             0.0,  p.z(), -p.y(),
+            -p.z(), 0.0,  p.x(),
+             p.y(), -p.x(), 0.0;
+        hessian.noalias() += jacobian.transpose() * jacobian;
+        ++metrics.observability_correspondences;
+    }
+
+    if (metrics.observability_correspondences < 6)
+    {
+        return metrics;
+    }
+
+    hessian /= static_cast<double>(metrics.observability_correspondences);
+    const Eigen::JacobiSVD<Eigen::Matrix<double, 6, 6>> svd(
+        hessian, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    const Eigen::Matrix<double, 6, 1> singular = svd.singularValues();
+    metrics.observability_min_singular_value = singular(5);
+    metrics.observability_condition_number =
+        singular(0) / std::max(singular(5), 1e-12);
+    return metrics;
+}
+
+/**
  * @brief 从 GTSAM Pose3 中提取 yaw。
  */
 double yawFromPose3(const gtsam::Pose3 &pose)
@@ -163,7 +260,6 @@ struct DegeneracyInfo
     double window_condition_number_mean = 1.0;
     // 当前帧实际进入 ikd-tree 的点占下采样点比例，用于衡量前端筛选强度。
     double insert_ratio = 1.0;
-
     /**
      * @brief 计算后端使用的连续退化强度 D_i ∈ [0,1]。
      *
@@ -274,6 +370,11 @@ public:
             20, sync_queue_param));
         // 回环检索时排除最近 N 个关键帧，避免把相邻帧误当成回环。
         recent_exclusion_num_ = declare_parameter<int>("recent_exclusion_num", 30);
+        // 用累计行驶距离补充关键帧编号排除。关键帧密度会随速度/转向改变，
+        // 因此在长直隧道中“相隔 30 帧”并不总是代表足够远的历史重访。
+        // 默认 0 表示保持旧行为；启用后，近路径候选会在 SC 排序后、ICP 前剔除。
+        loop_min_path_separation_ =
+            declare_parameter<double>("loop_min_path_separation", 0.0);
         // 每个当前关键帧最多尝试多少个 ScanContext 候选。
         // 默认保持 top-1：当前 SubT 长走廊实验中 top-K 虽能增加候选召回，
         // 但会引入更多通过局部门控却拉坏全局/局部轨迹的回环。
@@ -301,6 +402,30 @@ public:
         // Persistent 退化相关关键帧使用更严格 ICP 阈值，抑制长走廊相似结构假回环。
         icp_fitness_threshold_degenerate_ =
             declare_parameter<double>("icp_fitness_threshold_degenerate", 0.10);
+        // 双向 ICP：额外从候选子地图配准回当前帧，检查正反变换是否互为逆。
+        // 默认关闭以保持既有正式实验行为；启用后可抑制重复隧道中的单向伪配准。
+        loop_bidirectional_icp_enable_ =
+            declare_parameter<bool>("loop_bidirectional_icp_enable", false);
+        loop_bidirectional_icp_fitness_threshold_ =
+            declare_parameter<double>("loop_bidirectional_icp_fitness_threshold", 0.30);
+        loop_reciprocal_translation_threshold_ =
+            declare_parameter<double>("loop_reciprocal_translation_threshold", 0.30);
+        loop_reciprocal_yaw_threshold_ =
+            declare_parameter<double>("loop_reciprocal_yaw_threshold", 0.10);
+        // ICP Hessian-SVD 可观测性门控：默认关闭，避免未经标定的阈值改变旧实验。
+        // 启用后要求有效对应数足够、条件数不过大且最小奇异值不接近零。
+        loop_observability_enable_ =
+            declare_parameter<bool>("loop_observability_enable", false);
+        // 分离“记录指标”和“按指标拒绝”：首次在新数据集上仅记录 SVD 分布，
+        // 标定后才打开 reject，避免凭经验阈值把所有真实回环一并滤掉。
+        loop_observability_reject_enable_ =
+            declare_parameter<bool>("loop_observability_reject_enable", false);
+        loop_observability_min_correspondences_ =
+            declare_parameter<int>("loop_observability_min_correspondences", 100);
+        loop_observability_max_condition_number_ =
+            declare_parameter<double>("loop_observability_max_condition_number", 1e5);
+        loop_observability_min_singular_value_ =
+            declare_parameter<double>("loop_observability_min_singular_value", 1e-4);
         // ICP 最大对应点距离，影响配准可收敛范围和误匹配风险。
         icp_max_correspondence_distance_ =
             declare_parameter<double>("icp_max_correspondence_distance", 2.0);
@@ -408,6 +533,28 @@ private:
             return;
         }
 
+        // launch 参数经常指向一次新建的实验子目录。前端 CSV 会在运行时创建其
+        // 父目录，但后端在构造阶段已经开始打开日志；这里主动创建三类输出的
+        // 父目录，避免因目录尚不存在而静默关闭全部后端记录。
+        std::error_code mkdir_error;
+        const auto ensure_parent_directory = [&](const std::string &path)
+        {
+            const std::filesystem::path parent = std::filesystem::path(path).parent_path();
+            if (!parent.empty())
+            {
+                std::filesystem::create_directories(parent, mkdir_error);
+            }
+        };
+        ensure_parent_directory(backend_loop_csv_path_);
+        ensure_parent_directory(backend_tum_path_);
+        ensure_parent_directory(backend_full_tum_path_);
+        if (mkdir_error)
+        {
+            RCLCPP_WARN(
+                get_logger(), "Cannot create backend log directory: %s",
+                mkdir_error.message().c_str());
+        }
+
         loop_csv_.open(backend_loop_csv_path_, std::ios::out | std::ios::trunc);
         if (!loop_csv_.is_open())
         {
@@ -422,7 +569,10 @@ private:
         loop_csv_
             << "time,current_id,candidate_id,scan_context_distance,icp_fitness,"
             << "threshold,trans_error,yaw_error,degenerate_pair,accepted,"
-            << "target_points,source_points,reason\n";
+            << "target_points,source_points,reverse_icp_fitness,"
+            << "reciprocal_translation_error,reciprocal_yaw_error,"
+            << "observability_correspondences,observability_condition_number,"
+            << "observability_min_singular_value,path_separation,reason\n";
         loop_csv_.flush();
 
         std::ofstream tum(backend_tum_path_, std::ios::out | std::ios::trunc);
@@ -466,7 +616,8 @@ private:
         bool accepted,
         size_t target_points,
         size_t source_points,
-        const std::string &reason)
+        const std::string &reason,
+        const LoopValidationMetrics &metrics = LoopValidationMetrics{})
     {
         if (!backend_log_enable_ || !loop_csv_.is_open())
         {
@@ -491,6 +642,13 @@ private:
                   << (accepted ? 1 : 0) << ","
                   << target_points << ","
                   << source_points << ","
+                  << metrics.reverse_fitness << ","
+                  << metrics.reciprocal_translation_error << ","
+                  << metrics.reciprocal_yaw_error << ","
+                  << metrics.observability_correspondences << ","
+                  << metrics.observability_condition_number << ","
+                  << metrics.observability_min_singular_value << ","
+                  << metrics.path_separation << ","
                   << reason << "\n";
         loop_csv_.flush();
     }
@@ -639,7 +797,6 @@ private:
         info.window_degenerate_ratio = msg->data[7];
         info.window_condition_number_mean = msg->data[12];
         info.insert_ratio = msg->data[14];
-
         std::lock_guard<std::mutex> lock(mtx_);
         degeneracy_queue_.push_back(info);
         while (degeneracy_queue_.size() > sync_queue_size_)
@@ -1154,12 +1311,46 @@ private:
                 return lhs.distance < rhs.distance;
             });
 
-        const int max_try =
-            std::min(static_cast<int>(candidates.size()), std::max(1, loop_candidate_top_k_));
+        // 先按累计行驶距离去除近路径候选，再截取 top-K。否则 top-1 很容易被
+        // 隧道中仅相隔十几米、描述子却最相似的伪回环占据，真正远时序候选
+        // 根本没有机会进入 ICP 验证。
+        std::vector<ScanContextCandidate> path_separated_candidates;
+        path_separated_candidates.reserve(candidates.size());
+        for (const auto &candidate : candidates)
+        {
+            const double path_separation =
+                keyframePathSeparation(candidate.id, current_id);
+            if (loop_min_path_separation_ > 0.0 &&
+                path_separation < loop_min_path_separation_)
+            {
+                LoopValidationMetrics metrics;
+                metrics.path_separation = path_separation;
+                writeLoopCsv(
+                    current_id, candidate.id, candidate.distance,
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(), false, false, 0,
+                    cur.cloud ? cur.cloud->size() : 0,
+                    "path_separation_reject", metrics);
+                continue;
+            }
+            path_separated_candidates.push_back(candidate);
+        }
+        if (path_separated_candidates.empty())
+        {
+            return;
+        }
+
+        const int max_try = std::min(
+            static_cast<int>(path_separated_candidates.size()),
+            std::max(1, loop_candidate_top_k_));
         for (int idx = 0; idx < max_try; ++idx)
         {
-            const double sc_distance = candidates[idx].distance;
-            const int candidate_id = candidates[idx].id;
+            const double sc_distance = path_separated_candidates[idx].distance;
+            const int candidate_id = path_separated_candidates[idx].id;
+            const double path_separation =
+                keyframePathSeparation(candidate_id, current_id);
             std::string cooldown_reason;
             if (isLoopCoolingDown(current_id, candidate_id, cooldown_reason))
             {
@@ -1182,7 +1373,8 @@ private:
                     current_id, candidate_id, cooldown_reason.c_str());
                 continue;
             }
-            if (addIcpLoopFactor(current_id, candidate_id, sc_distance))
+            if (addIcpLoopFactor(
+                    current_id, candidate_id, sc_distance, path_separation))
             {
                 return;
             }
@@ -1228,6 +1420,31 @@ private:
             }
         }
         return false;
+    }
+
+    /**
+     * @brief 计算两个关键帧之间沿前端轨迹的累计行驶距离。
+     *
+     * 它使用相邻关键帧 odometry 位姿的平移增量求和，而不是两端欧氏直线距离。
+     * 因而适合区分“机器人已经绕回原处”和“仍在同一条隧道中向前走了十几米”。
+     */
+    double keyframePathSeparation(int first_id, int second_id) const
+    {
+        if (keyframes_.empty())
+        {
+            return 0.0;
+        }
+        const int start = std::max(0, std::min(first_id, second_id));
+        const int end = std::min(
+            static_cast<int>(keyframes_.size()) - 1,
+            std::max(first_id, second_id));
+        double distance = 0.0;
+        for (int i = start + 1; i <= end; ++i)
+        {
+            distance += (keyframes_[i].odom_pose.translation() -
+                         keyframes_[i - 1].odom_pose.translation()).norm();
+        }
+        return distance;
     }
 
     /**
@@ -1303,7 +1520,11 @@ private:
      *
      * 这样避免长走廊、隧道中“看起来相似但位置不同”的假回环。
      */
-    bool addIcpLoopFactor(int current_id, int candidate_id, double sc_distance)
+    bool addIcpLoopFactor(
+        int current_id,
+        int candidate_id,
+        double sc_distance,
+        double path_separation)
     {
         Cloud::Ptr target_submap = buildLocalSubmapInCenterFrame(candidate_id);
         if (!target_submap || target_submap->empty())
@@ -1405,11 +1626,121 @@ private:
             return false;
         }
 
+        const Eigen::Matrix4f forward_transformation = icp.getFinalTransformation();
+        LoopValidationMetrics validation_metrics;
+        validation_metrics.path_separation = path_separation;
+
+        // 第三层：双向 ICP 验证。单向 ICP 在重复走廊内可能把两段平行墙面
+        // 贴合；若反向配准不能收敛、fitness 很差或正反变换不互逆，则拒绝。
+        if (loop_bidirectional_icp_enable_)
+        {
+            Cloud::Ptr reverse_aligned(new Cloud());
+            pcl::IterativeClosestPoint<PointType, PointType> reverse_icp;
+            reverse_icp.setMaxCorrespondenceDistance(icp_max_correspondence_distance_);
+            reverse_icp.setMaximumIterations(50);
+            reverse_icp.setTransformationEpsilon(1e-6);
+            reverse_icp.setEuclideanFitnessEpsilon(1e-6);
+            reverse_icp.setInputSource(target_submap);
+            reverse_icp.setInputTarget(keyframes_[current_id].cloud);
+            reverse_icp.align(*reverse_aligned, initial_guess.inverse());
+
+            if (!reverse_icp.hasConverged())
+            {
+                writeLoopCsv(
+                    current_id, candidate_id, sc_distance, fitness, fitness_threshold,
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(), degenerate_pair, false,
+                    target_submap->size(),
+                    keyframes_[current_id].cloud ? keyframes_[current_id].cloud->size() : 0,
+                    "bidirectional_icp_not_converged", validation_metrics);
+                RCLCPP_INFO(
+                    get_logger(),
+                    "Reject loop cur=%d cand=%d: reverse ICP not converged",
+                    current_id, candidate_id);
+                return false;
+            }
+
+            validation_metrics.reverse_fitness = reverse_icp.getFitnessScore();
+            const Eigen::Matrix4f reverse_transformation =
+                reverse_icp.getFinalTransformation();
+            const Eigen::Matrix4f reciprocal =
+                forward_transformation * reverse_transformation;
+            validation_metrics.reciprocal_translation_error =
+                reciprocal.block<3, 1>(0, 3).cast<double>().norm();
+            validation_metrics.reciprocal_yaw_error = std::abs(wrapAngle(
+                std::atan2(static_cast<double>(reciprocal(1, 0)),
+                           static_cast<double>(reciprocal(0, 0)))));
+
+            if (validation_metrics.reverse_fitness > loop_bidirectional_icp_fitness_threshold_ ||
+                validation_metrics.reciprocal_translation_error >
+                    loop_reciprocal_translation_threshold_ ||
+                validation_metrics.reciprocal_yaw_error > loop_reciprocal_yaw_threshold_)
+            {
+                writeLoopCsv(
+                    current_id, candidate_id, sc_distance, fitness, fitness_threshold,
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(), degenerate_pair, false,
+                    target_submap->size(),
+                    keyframes_[current_id].cloud ? keyframes_[current_id].cloud->size() : 0,
+                    "bidirectional_consistency_reject", validation_metrics);
+                RCLCPP_INFO(
+                    get_logger(),
+                    "Reject loop cur=%d cand=%d: reverse ICP=%.3f reciprocal trans=%.3f yaw=%.3f",
+                    current_id, candidate_id, validation_metrics.reverse_fitness,
+                    validation_metrics.reciprocal_translation_error,
+                    validation_metrics.reciprocal_yaw_error);
+                return false;
+            }
+        }
+
+        // 第四层：Hessian-SVD 可观测性验证。特别针对“墙面拟合很好，
+        // 但沿隧道方向没有约束”的情况；所有指标也写入 CSV 便于标定阈值。
+        if (loop_observability_enable_)
+        {
+            const LoopValidationMetrics observability_metrics = evaluateLoopObservability(
+                keyframes_[current_id].cloud, target_submap, forward_transformation,
+                icp_max_correspondence_distance_);
+            validation_metrics.observability_correspondences =
+                observability_metrics.observability_correspondences;
+            validation_metrics.observability_condition_number =
+                observability_metrics.observability_condition_number;
+            validation_metrics.observability_min_singular_value =
+                observability_metrics.observability_min_singular_value;
+
+            const bool observable =
+                validation_metrics.observability_correspondences >=
+                    static_cast<size_t>(std::max(6, loop_observability_min_correspondences_)) &&
+                std::isfinite(validation_metrics.observability_condition_number) &&
+                validation_metrics.observability_condition_number <=
+                    loop_observability_max_condition_number_ &&
+                std::isfinite(validation_metrics.observability_min_singular_value) &&
+                validation_metrics.observability_min_singular_value >=
+                    loop_observability_min_singular_value_;
+            if (loop_observability_reject_enable_ && !observable)
+            {
+                writeLoopCsv(
+                    current_id, candidate_id, sc_distance, fitness, fitness_threshold,
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(), degenerate_pair, false,
+                    target_submap->size(),
+                    keyframes_[current_id].cloud ? keyframes_[current_id].cloud->size() : 0,
+                    "observability_reject", validation_metrics);
+                RCLCPP_INFO(
+                    get_logger(),
+                    "Reject loop cur=%d cand=%d: observability corr=%zu cond=%.2e min_sv=%.2e",
+                    current_id, candidate_id,
+                    validation_metrics.observability_correspondences,
+                    validation_metrics.observability_condition_number,
+                    validation_metrics.observability_min_singular_value);
+                return false;
+            }
+        }
+
         // ICP 输出的是 source(current) -> target(candidate) 的变换：
         //     T_candidate^{-1} T_current
         // 对 GTSAM BetweenFactor(candidate_id, current_id) 来说，
         // 这正好是 candidate -> current 的测量 Z_candidate_current。
-        const gtsam::Pose3 measurement = eigenToPose3(icp.getFinalTransformation());
+        const gtsam::Pose3 measurement = eigenToPose3(forward_transformation);
         // 第二层回环质量门控：ICP 的相对位姿不能和前端里程计预测差太多。
         //
         // 仅靠 fitness 会有风险：长走廊/隧道里局部几何重复，错误位置也可能配准出较小残差。
@@ -1444,7 +1775,8 @@ private:
                 false,
                 target_submap->size(),
                 keyframes_[current_id].cloud ? keyframes_[current_id].cloud->size() : 0,
-                "consistency_reject");
+                "consistency_reject",
+                validation_metrics);
             RCLCPP_INFO(
                 get_logger(),
                 "Reject loop cur=%d cand=%d: consistency trans=%.3f/%.3f yaw=%.3f/%.3f SC=%.3f ICP=%.3f deg_pair=%d target=%zu",
@@ -1483,7 +1815,8 @@ private:
             true,
             target_submap->size(),
             keyframes_[current_id].cloud ? keyframes_[current_id].cloud->size() : 0,
-            "accepted");
+            "accepted",
+            validation_metrics);
 
         RCLCPP_WARN(
             get_logger(),
@@ -1654,6 +1987,7 @@ private:
     double cloud_time_tolerance_ = 0.20;
     size_t sync_queue_size_ = 200;
     int recent_exclusion_num_ = 30;
+    double loop_min_path_separation_ = 0.0;
     int loop_candidate_top_k_ = 1;
     int loop_current_cooldown_keyframes_ = 10;
     int loop_candidate_cooldown_keyframes_ = 20;
@@ -1662,6 +1996,15 @@ private:
     int scan_context_ringkey_candidate_num_ = 10;
     double icp_fitness_threshold_normal_ = 0.30;
     double icp_fitness_threshold_degenerate_ = 0.10;
+    bool loop_bidirectional_icp_enable_ = false;
+    double loop_bidirectional_icp_fitness_threshold_ = 0.30;
+    double loop_reciprocal_translation_threshold_ = 0.30;
+    double loop_reciprocal_yaw_threshold_ = 0.10;
+    bool loop_observability_enable_ = false;
+    bool loop_observability_reject_enable_ = false;
+    int loop_observability_min_correspondences_ = 100;
+    double loop_observability_max_condition_number_ = 1e5;
+    double loop_observability_min_singular_value_ = 1e-4;
     double icp_max_correspondence_distance_ = 2.0;
     double loop_consistency_trans_normal_ = 2.0;
     double loop_consistency_trans_degenerate_ = 1.0;

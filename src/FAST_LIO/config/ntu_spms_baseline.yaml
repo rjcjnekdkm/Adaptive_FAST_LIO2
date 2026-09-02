@@ -1,0 +1,48 @@
+laser_mapping:
+  ros__parameters:
+    # NTU VIRAL OS1-16 baseline. Sensor parameters match ntu_spms.yaml.
+    feature_extract_enable: false
+    point_filter_num: 3
+    max_iteration: 3
+    filter_size_surf: 0.5
+    filter_size_map: 0.5
+    cube_side_length: 1000.0
+    runtime_pos_log_enable: false
+    map_file_path: "./ntu_spms_fastlio.pcd"
+
+    common:
+      lid_topic: "/os1_cloud_node1/points"
+      imu_topic: "/imu/imu"
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      lidar_type: 3
+      scan_line: 16
+      timestamp_unit: 3
+      blind: 1.0
+
+    mapping:
+      acc_cov: 0.1
+      gyr_cov: 0.1
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
+      fov_degree: 360.0
+      det_range: 150.0
+      extrinsic_est_en: false
+      # Official horizontal-LiDAR pose in the IMU/body frame.
+      extrinsic_T: [-0.05, 0.0, 0.055]
+      extrinsic_R: [1.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0,
+                    0.0, 0.0, 1.0]
+
+    publish:
+      path_en: true
+      map_en: true
+      scan_publish_en: true
+      dense_publish_en: true
+      scan_bodyframe_pub_en: true
+
+    pcd_save:
+      pcd_save_en: false
+      interval: -1

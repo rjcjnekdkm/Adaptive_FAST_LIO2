@@ -23,6 +23,13 @@ def generate_launch_description():
     backend_use = LaunchConfiguration("backend")
     keyframe_distance = LaunchConfiguration("keyframe_distance")
     keyframe_yaw = LaunchConfiguration("keyframe_yaw")
+    recent_exclusion_num = LaunchConfiguration("recent_exclusion_num")
+    loop_min_path_separation = LaunchConfiguration("loop_min_path_separation")
+    loop_candidate_top_k = LaunchConfiguration("loop_candidate_top_k")
+    icp_fitness_threshold_normal = LaunchConfiguration("icp_fitness_threshold_normal")
+    loop_bidirectional_icp_enable = LaunchConfiguration("loop_bidirectional_icp_enable")
+    loop_observability_enable = LaunchConfiguration("loop_observability_enable")
+    loop_observability_reject_enable = LaunchConfiguration("loop_observability_reject_enable")
     loop_current_cooldown_keyframes = LaunchConfiguration("loop_current_cooldown_keyframes")
     loop_candidate_cooldown_keyframes = LaunchConfiguration("loop_candidate_cooldown_keyframes")
     loop_pair_cooldown_keyframes = LaunchConfiguration("loop_pair_cooldown_keyframes")
@@ -84,6 +91,57 @@ def generate_launch_description():
         "keyframe_yaw",
         default_value="0.10",
         description="Backend keyframe yaw threshold in radians"
+    )
+
+    declare_recent_exclusion_num_cmd = DeclareLaunchArgument(
+        "recent_exclusion_num",
+        default_value="30",
+        description=(
+            "Exclude this many most recent keyframes from ScanContext loop "
+            "retrieval to avoid short-term repeated-structure matches"
+        )
+    )
+
+    declare_loop_min_path_separation_cmd = DeclareLaunchArgument(
+        "loop_min_path_separation",
+        default_value="0.0",
+        description=(
+            "Minimum frontend path distance in meters between loop endpoints; "
+            "0 disables this additional temporal/spatial exclusion"
+        )
+    )
+
+    declare_icp_fitness_threshold_normal_cmd = DeclareLaunchArgument(
+        "icp_fitness_threshold_normal",
+        default_value="0.30",
+        description=(
+            "Maximum ICP fitness for a normal-state loop candidate; lower "
+            "values apply stricter geometric verification"
+        )
+    )
+
+    declare_loop_candidate_top_k_cmd = DeclareLaunchArgument(
+        "loop_candidate_top_k",
+        default_value="1",
+        description="Maximum number of time-separated ScanContext candidates verified per keyframe"
+    )
+
+    declare_loop_bidirectional_icp_enable_cmd = DeclareLaunchArgument(
+        "loop_bidirectional_icp_enable",
+        default_value="false",
+        description="Require reverse ICP and forward/reverse transform consistency for loop acceptance"
+    )
+
+    declare_loop_observability_enable_cmd = DeclareLaunchArgument(
+        "loop_observability_enable",
+        default_value="false",
+        description="Require a well-conditioned ICP Hessian-SVD loop constraint"
+    )
+
+    declare_loop_observability_reject_enable_cmd = DeclareLaunchArgument(
+        "loop_observability_reject_enable",
+        default_value="false",
+        description="Reject loop factors failing the recorded ICP Hessian-SVD observability criteria"
     )
 
     declare_loop_current_cooldown_cmd = DeclareLaunchArgument(
@@ -217,6 +275,13 @@ def generate_launch_description():
             {"use_sim_time": use_sim_time},
             {"keyframe_distance": keyframe_distance},
             {"keyframe_yaw": keyframe_yaw},
+            {"recent_exclusion_num": recent_exclusion_num},
+            {"loop_min_path_separation": loop_min_path_separation},
+            {"loop_candidate_top_k": loop_candidate_top_k},
+            {"icp_fitness_threshold_normal": icp_fitness_threshold_normal},
+            {"loop_bidirectional_icp_enable": loop_bidirectional_icp_enable},
+            {"loop_observability_enable": loop_observability_enable},
+            {"loop_observability_reject_enable": loop_observability_reject_enable},
             {"loop_current_cooldown_keyframes": loop_current_cooldown_keyframes},
             {"loop_candidate_cooldown_keyframes": loop_candidate_cooldown_keyframes},
             {"loop_pair_cooldown_keyframes": loop_pair_cooldown_keyframes},
@@ -242,6 +307,13 @@ def generate_launch_description():
     ld.add_action(declare_backend_cmd)
     ld.add_action(declare_keyframe_distance_cmd)
     ld.add_action(declare_keyframe_yaw_cmd)
+    ld.add_action(declare_recent_exclusion_num_cmd)
+    ld.add_action(declare_loop_min_path_separation_cmd)
+    ld.add_action(declare_loop_candidate_top_k_cmd)
+    ld.add_action(declare_icp_fitness_threshold_normal_cmd)
+    ld.add_action(declare_loop_bidirectional_icp_enable_cmd)
+    ld.add_action(declare_loop_observability_enable_cmd)
+    ld.add_action(declare_loop_observability_reject_enable_cmd)
     ld.add_action(declare_loop_current_cooldown_cmd)
     ld.add_action(declare_loop_candidate_cooldown_cmd)
     ld.add_action(declare_loop_pair_cooldown_cmd)

@@ -1,0 +1,48 @@
+laser_mapping:
+  ros__parameters:
+    # HILTI 2021 Basement_1 baseline.  Keep common sensor and mapping
+    # parameters equal to Adaptive FAST-LIO2 for a fair comparison.
+    feature_extract_enable: false
+    point_filter_num: 3
+    max_iteration: 3
+    filter_size_surf: 0.5
+    filter_size_map: 0.5
+    cube_side_length: 1000.0
+    runtime_pos_log_enable: false
+    map_file_path: "./hilti_basement1_fastlio.pcd"
+
+    common:
+      lid_topic: "/livox/lidar"
+      imu_topic: "/alphasense/imu"
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      lidar_type: 1
+      scan_line: 1
+      blind: 1.0
+
+    mapping:
+      acc_cov: 0.1
+      gyr_cov: 0.1
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
+      fov_degree: 90.0
+      det_range: 200.0
+      extrinsic_est_en: false
+      # calibration.yaml: p_imu = R * p_livox + t.
+      extrinsic_T: [-0.003050708, -0.021993854, 0.150764152]
+      extrinsic_R: [0.999830032, 0.017023226, -0.007079288,
+                    0.017141660, -0.999708203, 0.017019789,
+                   -0.006787491, -0.017138247, -0.999830091]
+
+    publish:
+      path_en: true
+      map_en: true
+      scan_publish_en: true
+      dense_publish_en: true
+      scan_bodyframe_pub_en: true
+
+    pcd_save:
+      pcd_save_en: false
+      interval: -1
