@@ -11,6 +11,7 @@
 #include <numeric>
 #include <iomanip>
 #include <sstream>
+#include <utility>
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -36,6 +37,8 @@
 #include "adaptive_fast_lio2/adaptive_preprocess.hpp"
 #include "adaptive_fast_lio2/adaptive_imu_process.hpp"
 #include "adaptive_fast_lio2/adaptive_map_manager.hpp"
+#include "adaptive_fast_lio2/adaptive_map_strategy.hpp"
+#include "adaptive_fast_lio2/adaptive_frontend_module.hpp"
 #include "adaptive_fast_lio2/adaptive_runtime_logger.hpp"
 #include "use-ikfom.hpp"
 
@@ -110,13 +113,14 @@ uint64_t total_quality_rejected = 0;
 uint64_t total_direction_rejected = 0;
 uint64_t total_persistent_quota_rejected = 0;
 uint64_t total_voxel_rejected = 0;
+// scan-to-map 有效点不足而跳过地图更新的累计帧数；仅用于实验完整性诊断。
+uint64_t total_scan_update_failures = 0;
 size_t last_map_add_num = 0;
 
 // ===================== 全局参数 =====================
 // LiDAR 与 IMU 的 ROS2 订阅话题名称。
 string lid_topic;
 string imu_topic;
-
 // 以下参数对应预处理模块中的雷达类型、扫描线数、抽点间隔、时间单位和扫描频率。
 int lidar_type = AVIA;
 int scan_line = 6;
@@ -189,6 +193,9 @@ PointCloudXYZI::Ptr pcl_wait_pub(new PointCloudXYZI());
 // ===================== 自适应地图插入参数 =====================
 // 是否启用退化感知地图点筛选；关闭时保持原 FAST-LIO2 的体素插入行为。
 bool adaptive_map_enable = false;
+// 仅运行退化检测与窗口状态机、写入日志；绝不改变 ESIKF 或地图插入。
+// 该开关用于第一阶段的纯诊断实验。
+bool degeneracy_diagnostic_enable = false;
 
 // 最终 scan-to-map 有效匹配点数量下限
 int adaptive_min_effective_points = 200;
@@ -251,34 +258,6 @@ double adaptive_window_persistent_insert_quota_scale = 1.0;
 int adaptive_window_persistent_insert_quota_min = 0;
 int adaptive_window_persistent_insert_quota_max = 0;
 
-enum class DegeneracyMode
-{
-    // 当前帧和窗口都没有表现出退化。
-    Normal = 0,
-    // 当前帧静态退化，但窗口尚未证明它是长期持续退化；用于拐角/短时突变。
-    Transient = 1,
-    // 窗口确认最近一段距离内持续退化；用于长走廊/隧道/矿道。
-    Persistent = 2
-};
-
-struct DegeneracyWindowFrame
-{
-    // 当前帧是否由单帧静态规则判为退化，记为 D_t。
-    bool static_degenerate = false;
-    // 当前帧有效点到面约束比例 r_t = N_eff / N_downsampled。
-    double effective_ratio = 0.0;
-    // 当前帧法向信息矩阵最小/最大特征值比例 rho_t = lambda_min / lambda_max。
-    double normal_eigen_ratio = 0.0;
-    // 当前帧有效点到面约束平均绝对残差。
-    double residual_mean = 0.0;
-    // 当前帧 scan-to-map 雅可比条件数，用于度量整体约束是否病态。
-    double condition_number = 1.0;
-    // 当前滤波状态位置，用于计算窗口内累计行驶距离。
-    Eigen::Vector3d position = Eigen::Vector3d::Zero();
-    // 当前 yaw，用于计算窗口内累计转角，区分直走廊和拐角。
-    double yaw = 0.0;
-};
-
 // 最近 K 帧的退化统计量缓存。每次插入新帧，超过 K 后弹出最旧帧。
 std::deque<DegeneracyWindowFrame> degeneracy_window;
 DegeneracyMode current_degeneracy_mode = DegeneracyMode::Normal;
@@ -292,6 +271,8 @@ double window_path_length = 0.0;
 double window_yaw_change = 0.0;
 double window_condition_number_mean = 1.0;
 int window_recent_degenerate_streak = 0;
+double window_localizability_f0_mean = 0.0;
+double window_localizability_lambda0_mean = 0.0;
 // Persistent 模式进入/退出计数器，用于状态机滞回。
 int persistent_enter_count = 0;
 int persistent_exit_count = 0;
@@ -303,6 +284,56 @@ double frame_residual_median = 0.0;
 double frame_residual_mad = 0.0;
 double frame_condition_number = 1.0;
 Eigen::Matrix<double, 6, 1> frame_weak_direction = Eigen::Matrix<double, 6, 1>::Zero();
+
+// 当前 scan-to-map 实际观测到的地图体素法向可定位性场。
+// 这些量用于日志，并作为异常创新上下文；不直接修改滤波状态。
+size_t frame_localizability_observed_voxels = 0;
+double frame_localizability_planarity_mean = 0.0;
+Eigen::Vector3d frame_localizability_eigenvalues = Eigen::Vector3d::Zero();
+double frame_localizability_f0 = 0.0;
+double frame_localizability_lambda0 = 0.0;
+
+// 创新感知地图策略：对 IMU 传播先验到 LiDAR 后验的位姿修正量做
+// 滑窗稳健异常检测。该信号只收紧 Adaptive Map 的逐点入图质量门限，
+// 不改变 ESIKF 状态、协方差或 LiDAR 测量噪声。
+bool transition_guard_enable = false;
+int transition_guard_history_size = 30;
+int transition_guard_min_history = 15;
+double transition_guard_mad_scale = 4.0;
+double transition_guard_translation_floor = 0.10;
+double transition_guard_rotation_floor = 0.03;
+double transition_guard_localizability_drop_ratio = 0.80;
+double transition_guard_turn_rate_threshold = 0.30;
+double transition_guard_residual_context_threshold = 0.15;
+double transition_guard_map_residual_sigma_scale = 0.75;
+double transition_guard_map_min_quality_score = 0.94;
+int transition_guard_map_hold_frames = 5;
+bool frame_transition_guard_triggered = false;
+bool frame_transition_guard_turn_residual_triggered = false;
+bool frame_transition_guard_map_active = false;
+int frame_transition_guard_map_hold_remaining = 0;
+int transition_guard_map_hold_remaining = 0;
+bool frame_transition_guard_history_ready = false;
+double frame_lidar_nominal_correction_translation = 0.0;
+double frame_lidar_nominal_correction_rotation = 0.0;
+double frame_lidar_correction_translation_threshold = 0.0;
+double frame_lidar_correction_rotation_threshold = 0.0;
+double frame_transition_guard_localizability_drop = 1.0;
+double frame_transition_guard_nominal_residual = 0.0;
+deque<double> transition_guard_translation_history;
+deque<double> transition_guard_rotation_history;
+deque<double> transition_guard_f0_history;
+deque<double> transition_guard_lambda0_history;
+
+// 当前扫描对应的 IMU 角速度统计，仅用于验证掉头/快速旋转与失锁的时间关系。
+double frame_imu_angular_velocity_mean = 0.0;
+double frame_imu_angular_velocity_max = 0.0;
+
+// IKFoM 更新后的位姿边缘协方差诊断量。最大特征值对应最不确定方向。
+Eigen::Vector3d frame_translation_cov_eigenvalues = Eigen::Vector3d::Zero();
+Eigen::Vector3d frame_translation_weak_direction = Eigen::Vector3d::Zero();
+Eigen::Vector3d frame_rotation_cov_eigenvalues = Eigen::Vector3d::Zero();
+Eigen::Vector3d frame_rotation_weak_direction = Eigen::Vector3d::Zero();
 
 // h_share_model() 按 feats_down_body 索引生成的逐点质量信息。
 // effective 表示该点是否形成有效点到面约束；其余数组分别保存绝对残差、质量分数和世界系平面法向量。
@@ -368,6 +399,7 @@ state_ikfom state_point;
 // ===================== 地图管理模块 =====================
 // p_map 封装 ikd-tree 的增量插入、最近邻搜索、区域删除与发布缓存刷新。
 std::shared_ptr<AdaptiveMapManager> p_map(new AdaptiveMapManager());
+AdaptiveMapStrategy adaptive_map_strategy;
 
 
 // ===================== 地图初始化与局部地图参数 =====================
@@ -898,614 +930,6 @@ void downsample_current_scan(const PointCloudXYZI::Ptr &cloud_in)
 }
 
 /**
- * @brief 判断当前帧是否可能退化
- */
-bool is_current_frame_degenerate()
-{
-    if(!adaptive_map_enable)
-    {
-        return false;
-    }
-
-    const int downsampled_points = static_cast<int>(feats_down_body->size());
-    frame_effective_ratio =
-        downsampled_points > 0
-            ? static_cast<double>(effct_feat_num) / static_cast<double>(downsampled_points)
-            : 0.0;
-
-    // 计算法向量信息矩阵 A = (1/N) * Σ(n_i * n_i^T)。
-    // 使用 rho = lambda_min / lambda_max 作为法向方向覆盖度。
-    Eigen::Matrix3d normal_information = Eigen::Matrix3d::Zero();
-    int normal_count = 0;
-    for (size_t i = 0; i < map_point_effective.size(); ++i)
-    {
-        if (map_point_effective[i] == 0)
-        {
-            continue;
-        }
-
-        const Eigen::Vector3d &normal = map_point_normal[i];
-        normal_information += normal * normal.transpose();
-        normal_count++;
-    }
-
-    frame_normal_eigen_ratio = 0.0;
-    if (normal_count > 0)
-    {
-        normal_information /= static_cast<double>(normal_count);
-        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(normal_information);
-        if (solver.info() == Eigen::Success)
-        {
-            const Eigen::Vector3d eigenvalues = solver.eigenvalues();
-            frame_normal_eigen_ratio = eigenvalues(2) > 1e-9 ? eigenvalues(0) / eigenvalues(2) : 0.0;
-        }
-    }
-
-    return effct_feat_num < adaptive_min_effective_points ||
-           frame_effective_ratio < adaptive_min_effective_ratio ||
-           res_mean_last > adaptive_max_mean_residual ||
-           frame_normal_eigen_ratio < adaptive_min_normal_eigen_ratio;
-}
-
-/**
- * @brief 将退化模式枚举转换为可读字符串
- *
- * 仅用于终端日志输出，不参与算法决策。
- */
-const char *degeneracy_mode_name(DegeneracyMode mode)
-{
-    switch (mode)
-    {
-    case DegeneracyMode::Normal:
-        return "NORMAL";
-    case DegeneracyMode::Transient:
-        return "TRANSIENT";
-    case DegeneracyMode::Persistent:
-        return "PERSISTENT";
-    default:
-        return "UNKNOWN";
-    }
-}
-
-/**
- * @brief 将角度归一化到 [-pi, pi]
- *
- * 滑动窗口中累计 yaw 变化时需要处理角度跨越 ±pi 的情况，
- * 否则小转角可能被误算成接近 2*pi 的大转角。
- */
-double normalize_angle(double angle)
-{
-    constexpr double pi = 3.14159265358979323846;
-    while (angle > pi)
-    {
-        angle -= 2.0 * pi;
-    }
-    while (angle < -pi)
-    {
-        angle += 2.0 * pi;
-    }
-    return angle;
-}
-
-/**
- * @brief 从当前滤波状态姿态中提取 yaw 角
- */
-double current_state_yaw()
-{
-    // 从当前 SO(3) 姿态中提取 yaw，用于窗口内累计转角。
-    // 这里只需要判断“是否近似直行”，不参与滤波状态更新。
-    const Eigen::Matrix3d rot = state_point.rot.toRotationMatrix();
-    return std::atan2(rot(1, 0), rot(0, 0));
-}
-
-/**
- * @brief 更新滑动窗口退化状态
- *
- * 滑动窗口保存最近 K 帧：
- *   W_t = {t-K+1, ..., t}
- *
- * 并计算：
- *   1. 退化比例 gamma_t = count(D_j = true) / K
- *   2. 平均法向覆盖度 mean(rho_j)
- *   3. 残差变异系数 CV = std(mean_residual_j) / mean(mean_residual_j)
- *   4. 窗口内累计运动距离 L_t
- *   5. 窗口内累计 yaw 变化 Psi_t
- *   6. 最近连续退化长度 S_t
- *   7. 窗口平均 scan-to-map condition number
- */
-void update_degeneracy_window(bool current_static_degenerate)
-{
-    // 每帧重新计算窗口统计量。若窗口未启用或 adaptive_map 未启用，
-    // 这些值保持 0，并只保留 Normal/Transient 两种模式。
-    window_degenerate_ratio = 0.0;
-    window_normal_eigen_ratio_mean = 0.0;
-    window_residual_cv = 0.0;
-    window_path_length = 0.0;
-    window_yaw_change = 0.0;
-    window_condition_number_mean = 1.0;
-    window_recent_degenerate_streak = 0;
-    degeneracy_window_ready = false;
-
-    if (!adaptive_map_enable || !adaptive_window_enable)
-    {
-        // 滑动窗口关闭时：当前帧退化就视为短时退化，否则 Normal。
-        // 这样可以兼容原来的静态逐帧版本。
-        current_degeneracy_mode = current_static_degenerate ? DegeneracyMode::Transient : DegeneracyMode::Normal;
-        persistent_enter_count = 0;
-        persistent_exit_count = current_static_degenerate ? 0 : persistent_exit_count + 1;
-        return;
-    }
-
-    // 将当前帧的退化指标压入窗口。
-    // 注意：这里记录的是 scan-to-map 和最终状态更新后的统计量，
-    // 因此与本帧地图插入决策使用的是同一时刻的质量信息。
-    DegeneracyWindowFrame frame;
-    frame.static_degenerate = current_static_degenerate;
-    frame.effective_ratio = frame_effective_ratio;
-    frame.normal_eigen_ratio = frame_normal_eigen_ratio;
-    frame.residual_mean = res_mean_last;
-    frame.condition_number = frame_condition_number;
-    frame.position = state_point.pos;
-    frame.yaw = current_state_yaw();
-
-    degeneracy_window.push_back(frame);
-    const int window_size = std::max(1, adaptive_window_size);
-    // 保持固定长度 K：新帧进入，最旧帧弹出。
-    while (static_cast<int>(degeneracy_window.size()) > window_size)
-    {
-        degeneracy_window.pop_front();
-    }
-
-    // 窗口未攒够 K 帧时，不允许进入 Persistent。
-    // 这样避免刚启动或刚初始化时统计不稳定。
-    degeneracy_window_ready = static_cast<int>(degeneracy_window.size()) >= window_size;
-
-    // 统计窗口内退化帧比例 gamma_t 和平均法向覆盖度 mean(rho_t)。
-    int degenerate_count = 0;
-    double residual_sum = 0.0;
-    double condition_number_sum = 0.0;
-    for (const auto &item : degeneracy_window)
-    {
-        if (item.static_degenerate)
-        {
-            degenerate_count++;
-        }
-        window_normal_eigen_ratio_mean += item.normal_eigen_ratio;
-        residual_sum += item.residual_mean;
-        condition_number_sum += item.condition_number;
-    }
-
-    const double count = static_cast<double>(degeneracy_window.size());
-    if (count > 0.0)
-    {
-        window_degenerate_ratio =
-            static_cast<double>(degenerate_count) / count;
-        window_normal_eigen_ratio_mean /= count;
-        window_condition_number_mean = condition_number_sum / count;
-    }
-
-    // 从当前帧向前统计最近连续退化长度 S_t。
-    // 它修正单纯比例判断的漏洞：退化-正常-退化虽然比例可能较高，
-    // 但 recent streak 不足，不应被认为是严格持续退化。
-    for (auto it = degeneracy_window.rbegin();
-         it != degeneracy_window.rend();
-         ++it)
-    {
-        if (!it->static_degenerate)
-        {
-            break;
-        }
-        window_recent_degenerate_streak++;
-    }
-
-    // 计算残差均值和标准差，用变异系数 CV 衡量残差是否稳定。
-    const double residual_mean = count > 0.0 ? residual_sum / count : 0.0;
-    double residual_variance = 0.0;
-    for (const auto &item : degeneracy_window)
-    {
-        const double delta = item.residual_mean - residual_mean;
-        residual_variance += delta * delta;
-    }
-    if (count > 0.0)
-    {
-        residual_variance /= count;
-    }
-    const double residual_std = std::sqrt(residual_variance);
-    window_residual_cv =
-        residual_mean > 1e-9 ? residual_std / residual_mean : residual_std;
-
-    // 计算窗口内累计运动距离和累计 yaw 变化：
-    //   L_t   = Σ ||p_i - p_{i-1}||
-    //   Psi_t = Σ |wrap(yaw_i - yaw_{i-1})|
-    //
-    // 长走廊/隧道通常表现为 L_t 较大但 Psi_t 较小；
-    // 拐角则 Psi_t 会明显增大。
-    for (size_t i = 1; i < degeneracy_window.size(); ++i)
-    {
-        window_path_length +=
-            (degeneracy_window[i].position -
-             degeneracy_window[i - 1].position)
-                .norm();
-        window_yaw_change += std::abs(
-            normalize_angle(
-                degeneracy_window[i].yaw -
-                degeneracy_window[i - 1].yaw));
-    }
-
-    // 持续退化候选判断。
-    // 只有所有条件同时满足，才说明当前更像“长走廊/隧道式持续退化”，
-    // 而不是短时拐角或单帧噪声。
-    const bool persistent_candidate =
-        degeneracy_window_ready &&
-        window_degenerate_ratio > adaptive_window_persistent_ratio_threshold &&
-        window_normal_eigen_ratio_mean <
-            adaptive_window_normal_ratio_scale * adaptive_min_normal_eigen_ratio &&
-        window_residual_cv < adaptive_window_residual_stability_ratio &&
-        window_path_length > adaptive_window_min_motion &&
-        window_yaw_change < adaptive_window_max_yaw_change &&
-        window_recent_degenerate_streak >=
-            std::max(1, adaptive_window_min_recent_degenerate_streak) &&
-        window_condition_number_mean >= adaptive_window_min_condition_number;
-
-    if (persistent_candidate)
-    {
-        // 连续满足 persistent_candidate 才进入 Persistent。
-        persistent_enter_count++;
-        persistent_exit_count = 0;
-    }
-    else
-    {
-        // 不满足则清空进入计数，同时累计退出计数。
-        persistent_enter_count = 0;
-        persistent_exit_count++;
-    }
-
-    if (!current_static_degenerate)
-    {
-        // 当前帧已经不退化时，只有连续若干帧退出条件成立才回到 Normal。
-        // 这样避免由于单帧指标抖动导致模式立即跳变。
-        if (persistent_exit_count >= std::max(1, adaptive_window_exit_count_threshold))
-        {
-            current_degeneracy_mode = DegeneracyMode::Normal;
-        }
-        return;
-    }
-
-    if (current_degeneracy_mode == DegeneracyMode::Persistent)
-    {
-        // 已处于持续退化时，保持 Persistent，直到退出计数达到阈值。
-        if (persistent_exit_count >= std::max(1, adaptive_window_exit_count_threshold))
-        {
-            current_degeneracy_mode = DegeneracyMode::Transient;
-        }
-    }
-    else if (persistent_enter_count >= std::max(1, adaptive_window_enter_count_threshold))
-    {
-        // 连续多帧满足持续退化候选后，从 Transient 升级为 Persistent。
-        current_degeneracy_mode = DegeneracyMode::Persistent;
-    }
-    else
-    {
-        // 当前帧退化但窗口还没证明持续退化，先作为短时退化处理。
-        current_degeneracy_mode = DegeneracyMode::Transient;
-    }
-}
-
-/**
- * @brief 将平面法向量映射到离散方向分箱
- *
- * 退化帧中使用该分箱统计每个法向方向已经接纳的地图点数量。
- * 由于平面法向 n 和 -n 表示同一个平面方向，函数会先统一到同一半球，
- * 再按照方位角和俯仰角进行离散化。
- */
-int normal_direction_bin(const Eigen::Vector3d &input_normal)
-{
-    constexpr double pi = 3.14159265358979323846;
-    Eigen::Vector3d normal = input_normal.normalized();
-    // 平面法向量 n 与 -n 表示同一平面方向，统一到同一半球后再分箱。
-    if (normal.z() < 0.0 ||
-        (std::abs(normal.z()) < 1e-9 && normal.y() < 0.0) ||
-        (std::abs(normal.z()) < 1e-9 && std::abs(normal.y()) < 1e-9 && normal.x() < 0.0))
-    {
-        normal = -normal;
-    }
-
-    const double bin_angle = std::max(adaptive_normal_bin_angle_deg, 1.0) * pi / 180.0;
-    const double azimuth = std::atan2(normal.y(), normal.x()) + pi;
-    const double elevation = std::asin(std::clamp(normal.z(), -1.0, 1.0)) + 0.5 * pi;
-    // 使用方位角和俯仰角构造稳定的一维分箱编号。
-    const int azimuth_bin = static_cast<int>(std::floor(azimuth / bin_angle));
-    const int elevation_bin = static_cast<int>(std::floor(elevation / bin_angle));
-    const int azimuth_bin_count = static_cast<int>(std::ceil(2.0 * pi / bin_angle));
-
-    return elevation_bin * azimuth_bin_count + azimuth_bin;
-}
-
-/**
- * @brief 计算一组数值的中位数
- *
- * 用于残差 median 和 MAD 计算。参数按值传入，允许函数内部重排数据，
- * 避免修改调用者持有的原始残差序列。
- */
-double median_of_values(std::vector<double> values)
-{
-    if (values.empty())
-    {
-        return 0.0;
-    }
-
-    const size_t middle = values.size() / 2;
-    std::nth_element(values.begin(), values.begin() + middle, values.end());
-    const double upper = values[middle];
-    if (values.size() % 2 != 0)
-    {
-        return upper;
-    }
-
-    std::nth_element(values.begin(), values.begin() + middle - 1, values.end());
-    return 0.5 * (values[middle - 1] + upper);
-}
-
-/**
- * @brief 汇总当前帧实验指标并交给独立 CSV logger
- *
- * 本函数只负责从 SLAM 主流程读取已经计算完成的变量，并组装 RuntimeLogRow。
- * CSV 文件打开、表头和格式化写入由 AdaptiveRuntimeLogger 负责。
- *
- * 调用时机必须位于 map_incremental() 完成入图并更新累计计数之后，
- * 否则 map_size、total_map_added 等字段会落后一帧。
- */
-void write_runtime_log_row(
-    bool frame_degenerate,
-    size_t add_num,
-    size_t point_to_add_num,
-    size_t point_no_need_downsample_num,
-    int quality_rejected_num,
-    int invalid_quality_rejected_num,
-    int direction_rejected_num,
-    int persistent_quota_rejected_num,
-    int novel_accepted_num,
-    int novel_rejected_num,
-    int voxel_rejected_num,
-    int total_rejected_num)
-{
-    const size_t downsampled_points = feats_down_body->size();
-    RuntimeLogRow row;
-
-    // 帧级状态与匹配质量指标。
-    row.frame = map_update_count;
-    row.lidar_begin_time = Measures.lidar_beg_time;
-    row.lidar_end_time = Measures.lidar_end_time;
-    row.adaptive_map = adaptive_map_enable;
-    row.degenerate = frame_degenerate;
-    row.degeneracy_mode = static_cast<int>(current_degeneracy_mode);
-    row.window_ready = degeneracy_window_ready;
-    row.pos_x = state_point.pos.x();
-    row.pos_y = state_point.pos.y();
-    row.pos_z = state_point.pos.z();
-    const Eigen::Quaterniond orientation(state_point.rot.toRotationMatrix());
-    const Eigen::Quaterniond normalized_orientation = orientation.normalized();
-    row.quat_x = normalized_orientation.x();
-    row.quat_y = normalized_orientation.y();
-    row.quat_z = normalized_orientation.z();
-    row.quat_w = normalized_orientation.w();
-    row.downsampled_points = downsampled_points;
-    row.effective_points = effct_feat_num;
-    row.effective_ratio = frame_effective_ratio;
-    row.residual_mean = res_mean_last;
-    row.residual_median = frame_residual_median;
-    row.residual_mad = frame_residual_mad;
-    row.normal_eigen_ratio = frame_normal_eigen_ratio;
-    row.condition_number = frame_condition_number;
-    row.window_degenerate_ratio = window_degenerate_ratio;
-    row.window_normal_eigen_ratio_mean = window_normal_eigen_ratio_mean;
-    row.window_residual_cv = window_residual_cv;
-    row.window_path_length = window_path_length;
-    row.window_yaw_change = window_yaw_change;
-    row.window_condition_number_mean = window_condition_number_mean;
-    row.window_recent_degenerate_streak = window_recent_degenerate_streak;
-
-    // 本帧地图更新结果。
-    row.map_added = add_num;
-    row.point_to_add = point_to_add_num;
-    row.point_no_need_downsample = point_no_need_downsample_num;
-    row.insert_ratio =
-        downsampled_points > 0
-            ? static_cast<double>(add_num) / static_cast<double>(downsampled_points)
-            : 0.0;
-
-    // 本帧不同筛选规则产生的拒绝/接纳数量。
-    row.quality_rejected = quality_rejected_num;
-    row.invalid_quality_rejected = invalid_quality_rejected_num;
-    row.direction_rejected = direction_rejected_num;
-    row.persistent_quota_rejected = persistent_quota_rejected_num;
-    row.novel_accepted = novel_accepted_num;
-    row.novel_rejected = novel_rejected_num;
-    row.voxel_rejected = voxel_rejected_num;
-    row.total_rejected = total_rejected_num;
-
-    // 写入后的地图规模与程序启动以来的累计统计。
-    row.map_size = p_map->size();
-    row.total_map_added = total_map_added;
-    row.total_quality_rejected = total_quality_rejected;
-    row.total_direction_rejected = total_direction_rejected;
-    row.total_persistent_quota_rejected = total_persistent_quota_rejected;
-    row.total_voxel_rejected = total_voxel_rejected;
-
-    runtime_logger.write(row);
-}
-
-
-/**
- * @brief 判断一个点是否允许加入地图
- *
- * 插入规则：
- * 1. 如果 adaptive_map 未开启，所有点都允许加入
- * 2. 距离太近，不加入
- * 3. 距离太远，不加入
- * 4. 使用稳健残差阈值剔除异常或质量分数过低的匹配点
- * 5. 退化帧中拒绝地图附近的匹配失败点，并限制重复法向方向
- * 6. 对地图未知区域的新点设置帧级配额，避免地图完全停止生长
- */
-bool allow_map_insert_point(
-    const PointType &point_body,
-    size_t point_index,
-    bool frame_degenerate,
-    std::unordered_map<int, int> &normal_bin_counts,
-    int &quality_reject_num,
-    int &invalid_quality_num,
-    int &direction_reject_num,
-    int &persistent_quota_reject_num,
-    int &persistent_insert_accepted_num,
-    int persistent_insert_quota,
-    int &novel_accept_num,
-    int &novel_reject_num)
-{
-    if(!adaptive_map_enable)
-    {
-        return true;
-    }
-
-    double x = point_body.x;
-    double y = point_body.y;
-    double z = point_body.z;
-
-    double range = std::sqrt(x*x + y*y + z*z);
-
-    if(range < adaptive_min_range)
-    {
-        return false;
-    }
-
-    if(range > adaptive_max_range)
-    {
-        return false;
-    }
-
-    // 只有在最终位姿下成功形成点到面约束的点，才具有可用于筛选的质量信息。
-    const bool has_quality =
-        point_index < map_point_effective.size() &&
-        map_point_effective[point_index] != 0;
-    // Persistent 表示滑动窗口已经确认当前处于持续退化环境。
-    // 在该模式下不是完全停止建图，而是更保守地控制两类点：
-    //   1. 地图未知区域的新点 novel points；
-    //   2. 与已有约束方向重复的法向分箱点。
-    const bool persistent_mode =
-        current_degeneracy_mode == DegeneracyMode::Persistent;
-
-    if (has_quality)
-    {
-        // 使用中位数和 MAD 构造稳健阈值，避免少量异常残差抬高整帧门限。
-        const double robust_residual_limit =
-            frame_residual_median +
-            adaptive_residual_robust_sigma * 1.4826 * frame_residual_mad;
-        const double residual_limit =
-            std::min(
-                plane_residual_threshold,
-                std::max(
-                    std::min(
-                        res_mean_last * adaptive_residual_scale,
-                        robust_residual_limit),
-                    0.03));
-
-        const double residual_abs =
-            map_point_residual_abs[point_index];
-
-        const double quality_score =
-            map_point_quality_score[point_index];
-
-        if (residual_abs > residual_limit ||
-            quality_score < adaptive_min_quality_score)
-        {
-            quality_reject_num++;
-            return false;
-        }
-    }
-    else if (frame_degenerate)
-    {
-        const bool has_local_neighbors =
-            point_index < map_point_has_local_neighbors.size() &&
-            map_point_has_local_neighbors[point_index] != 0;
-
-        if (has_local_neighbors)
-        {
-            // 地图附近已有结构但当前点无法形成有效约束，视为坏匹配或动态/异常点。
-            invalid_quality_num++;
-            return false;
-        }
-
-        // 地图未知区域没有可用近邻。
-        //
-        // 如果完全拒绝这类点，机器人在退化环境中可能无法向前扩展地图；
-        // 如果全部接受，又可能把大量低约束/不确定点写入地图。
-        // 因此这里采用“帧级配额”：每帧只允许有限个 novel points 进入地图。
-        //
-        // Persistent 模式下配额进一步缩小：
-        //   novel_limit = max_novel_points_per_frame * persistent_novel_quota_scale
-        //
-        // 这对应长走廊/隧道中“允许地图继续生长，但降低不确定新点写入速度”。
-        const int novel_limit =
-            persistent_mode
-                ? static_cast<int>(std::round(
-                      adaptive_max_novel_points_per_frame *
-                      adaptive_window_persistent_novel_quota_scale))
-                : adaptive_max_novel_points_per_frame;
-
-        if (novel_accept_num >= std::max(0, novel_limit))
-        {
-            novel_reject_num++;
-            return false;
-        }
-        novel_accept_num++;
-    }
-
-    if(frame_degenerate && has_quality)
-    {
-        const int bin = normal_direction_bin(map_point_normal[point_index]);
-        // 退化帧中，对同一法向方向分箱的点设置上限。
-        //
-        // 背景：
-        //   长走廊/隧道中，大量点可能来自同一类墙面/地面，
-        //   它们的法向方向高度重复，继续大量写入只会强化单一方向约束，
-        //   对缺失自由度帮助有限。
-        //
-        // 因此使用 normal_bin_counts[bin] 统计当前帧每个法向方向已经接纳的点数。
-        // Persistent 模式下进一步降低 direction_limit：
-        //   direction_limit = max_points_per_normal_bin * persistent_direction_quota_scale
-        const int direction_limit =
-            persistent_mode
-                ? static_cast<int>(std::round(
-                      adaptive_max_points_per_normal_bin *
-                      adaptive_window_persistent_direction_quota_scale))
-                : adaptive_max_points_per_normal_bin;
-        int &bin_count = normal_bin_counts[bin];
-        if (bin_count >= std::max(1, direction_limit))
-        {
-            direction_reject_num++;
-            return false;
-        }
-        bin_count++;
-    }
-
-    // Persistent 已确认当前处于持续退化。候选索引在 map_incremental() 中已按
-    // “有效约束优先、弱方向贡献优先、质量分数次之”排序；此处的全局上限因此
-    // 会优先保留稀缺方向的高价值点，而抑制后续冗余点与 novel 点。
-    if (persistent_mode && persistent_insert_quota > 0)
-    {
-        if (persistent_insert_accepted_num >= persistent_insert_quota)
-        {
-            persistent_quota_reject_num++;
-            return false;
-        }
-        persistent_insert_accepted_num++;
-    }
-
-    return true;
-
-}
-
-
-/**
  * @brief FAST-LIO2 官方形式的 IKFoM 点到面观测模型
  *
  * 单个函数完成最近邻搜索、局部平面拟合、有效点筛选、逐点地图质量记录，
@@ -1518,32 +942,13 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
 
     effct_feat_num = 0;
     res_mean_last = 0.0;
-
-    map_point_effective.clear();
-    map_point_residual_abs.clear();
-    map_point_quality_score.clear();
-    map_point_normal.clear();
-    map_point_weak_direction_score.clear();
-    effective_point_indices.clear();
-    frame_residual_median = 0.0;
-    frame_residual_mad = 0.0;
-    frame_condition_number = 1.0;
-    frame_weak_direction.setZero();
+    begin_adaptive_scan_match(
+        feats_down_body == nullptr ? 0 : feats_down_body->size());
 
     if (feats_down_body == nullptr || feats_down_body->empty())
     {
         ekfom_data.valid = false;
         return;
-    }
-
-    map_point_effective.assign(feats_down_body->size(), 0);
-    map_point_residual_abs.assign(feats_down_body->size(), 0.0);
-    map_point_quality_score.assign(feats_down_body->size(), 0.0);
-    map_point_normal.assign(feats_down_body->size(), Eigen::Vector3d::Zero());
-    map_point_weak_direction_score.assign(feats_down_body->size(), 0.0);
-    if (map_point_has_local_neighbors.size() != feats_down_body->size())
-    {
-        map_point_has_local_neighbors.assign(feats_down_body->size(), 0);
     }
 
     feats_down_world->clear();
@@ -1609,8 +1014,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
                 nearest_points.size() >= static_cast<size_t>(nearest_search_num) &&
                 !squared_distances.empty() &&
                 squared_distances.back() <= nearest_sq_dist_threshold;
-            map_point_has_local_neighbors[i] =
-                point_selected_surf[i] != 0;
+            record_adaptive_neighbor(i, point_selected_surf[i] != 0);
         }
 
         if (point_selected_surf[i] == 0)
@@ -1644,10 +1048,8 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         }
 
         point_selected_surf[i] = 1;
-        map_point_effective[i] = 1;
-        map_point_residual_abs[i] = std::abs(residual);
-        map_point_quality_score[i] = score;
-        map_point_normal[i] = plane_normal;
+        record_adaptive_effective_match(
+            i, std::abs(residual), score, plane_normal);
 
         PointType normal_residual;
         normal_residual.x = static_cast<float>(plane_normal.x());
@@ -1657,8 +1059,6 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
 
         laserCloudOri->push_back(point_body);
         corr_normvect->push_back(normal_residual);
-        effective_point_indices.push_back(i);
-
         residual_sum += std::abs(residual);
         effective_residuals.push_back(std::abs(residual));
         effct_feat_num++;
@@ -1671,18 +1071,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         return;
     }
 
-    res_mean_last =
-        residual_sum / static_cast<double>(effct_feat_num);
-    frame_residual_median = median_of_values(effective_residuals);
-
-    std::vector<double> residual_deviations;
-    residual_deviations.reserve(effective_residuals.size());
-    for (const double residual : effective_residuals)
-    {
-        residual_deviations.push_back(
-            std::abs(residual - frame_residual_median));
-    }
-    frame_residual_mad = median_of_values(residual_deviations);
+    update_residual_diagnostics(residual_sum, effective_residuals);
 
     ekfom_data.valid = true;
     // h_x 是点到面观测对状态的雅可比；h 是取负后的残差观测向量。
@@ -1744,56 +1133,8 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         ekfom_data.h(i) = -norm_p.intensity;
     }
 
-    // idea 增强：基于 scan-to-map 位姿雅可比估计约束病态程度。
-    //
-    // 这里不改 ESIKF 滤波器，只从已经构造好的 h_x 中取前 6 维
-    // [position, rotation] 雅可比 H_pose，计算奇异值：
-    //   condition_number = sigma_max / sigma_min
-    //
-    // 条件数越大，说明当前点到面约束越病态，存在更明显的弱约束方向。
-    // 同时取最小奇异值对应的右奇异向量作为 weak direction，
-    // 后续 Persistent 模式下优先保留对该弱方向有贡献的点。
-    if (effct_feat_num > 0)
-    {
-        const Eigen::MatrixXd h_pose =
-            ekfom_data.h_x.block(0, 0, effct_feat_num, 6);
-        Eigen::JacobiSVD<Eigen::MatrixXd> svd(
-            h_pose,
-            Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-        const Eigen::VectorXd singular_values = svd.singularValues();
-        if (singular_values.size() > 0 && svd.matrixV().cols() >= 1)
-        {
-            const double sigma_max = singular_values(0);
-            const double sigma_min = singular_values(singular_values.size() - 1);
-            frame_condition_number =
-                sigma_min > 1e-9 ? sigma_max / sigma_min : 1e9;
-
-            const int weak_col = svd.matrixV().cols() - 1;
-            frame_weak_direction =
-                svd.matrixV().col(weak_col).template cast<double>();
-
-            for (int row = 0; row < effct_feat_num; ++row)
-            {
-                if (row >= static_cast<int>(effective_point_indices.size()))
-                {
-                    break;
-                }
-
-                const size_t point_index = effective_point_indices[row];
-                if (point_index >= map_point_weak_direction_score.size())
-                {
-                    continue;
-                }
-
-                const Eigen::VectorXd jacobian_row = h_pose.row(row);
-                const double row_norm = std::max(jacobian_row.norm(), 1e-9);
-                map_point_weak_direction_score[point_index] =
-                    std::abs(jacobian_row.dot(frame_weak_direction)) /
-                    row_norm;
-            }
-        }
-    }
+    update_scan_observability_diagnostics(
+        ekfom_data.h_x.block(0, 0, effct_feat_num, 6));
 
 }
 
@@ -2075,88 +1416,13 @@ void map_incremental()
     point_to_add->reserve(feats_down_body->size());
     point_no_need_downsample->reserve(feats_down_body->size());
 
-    // idea 模块入口：
-    //   1. 先做当前帧静态退化判断，得到 frame_degenerate；
-    //   2. 再把当前帧统计量送入滑动窗口，更新 Normal/Transient/Persistent 模式；
-    //   3. 后续 allow_map_insert_point() 会根据该模式决定是否收紧入图配额。
-    //
-    // 注意：滑动窗口只判断退化类型，不会阻止当前帧快速进入退化处理。
-    // 当前帧一旦静态退化，至少会进入 Transient；只有窗口确认持续退化后才升级为 Persistent。
-    bool frame_degenerate = is_current_frame_degenerate();
-    update_degeneracy_window(frame_degenerate);
+    const AdaptiveMapUpdatePlan adaptive_plan =
+        prepare_adaptive_map_update();
 
     int rejected_num = 0;
     int voxel_rejected_num = 0;
-    int quality_rejected_num = 0;
-    int invalid_quality_rejected_num = 0;
-    int direction_rejected_num = 0;
-    int persistent_quota_rejected_num = 0;
-    int novel_accepted_num = 0;
-    int novel_rejected_num = 0;
-    // 仅在当前帧内统计各法向方向已接纳的点数，防止单一方向约束大量写入地图。
-    std::unordered_map<int, int> normal_bin_counts;
-    int persistent_insert_accepted_num = 0;
-    int persistent_insert_quota = 0;
-    if (current_degeneracy_mode == DegeneracyMode::Persistent &&
-        adaptive_window_persistent_insert_quota_max > 0)
-    {
-        const int scaled_quota = static_cast<int>(std::round(
-            adaptive_window_persistent_insert_quota_scale *
-            static_cast<double>(std::max(0, effct_feat_num))));
-        persistent_insert_quota = std::min(
-            adaptive_window_persistent_insert_quota_max,
-            std::max(adaptive_window_persistent_insert_quota_min, scaled_quota));
-    }
 
-    std::vector<size_t> candidate_indices(feats_down_body->size());
-    std::iota(candidate_indices.begin(), candidate_indices.end(), 0);
-    if (adaptive_map_enable && frame_degenerate)
-    {
-        // 退化帧存在方向配额时先排序，避免最终保留结果依赖 VoxelGrid 输出顺序。
-        //
-        // Transient 模式：优先保留高质量点；
-        // Persistent 模式：优先保留对弱约束方向贡献更大的点，其次看质量分数。
-        // 这样借鉴 localizability contribution 的思想，但仍然只作用于地图更新，
-        // 不改 FAST-LIO2 的 ESIKF 滤波器结构。
-        const bool persistent_sort =
-            current_degeneracy_mode == DegeneracyMode::Persistent;
-        std::stable_sort(
-            candidate_indices.begin(),
-            candidate_indices.end(),
-            [persistent_sort](size_t lhs, size_t rhs)
-            {
-                const bool lhs_effective =
-                    lhs < map_point_effective.size() && map_point_effective[lhs] != 0;
-                const bool rhs_effective =
-                    rhs < map_point_effective.size() && map_point_effective[rhs] != 0;
-                if (lhs_effective != rhs_effective)
-                {
-                    return lhs_effective;
-                }
-                if (!lhs_effective)
-                {
-                    return false;
-                }
-                if (persistent_sort)
-                {
-                    const double lhs_weak_score =
-                        lhs < map_point_weak_direction_score.size()
-                            ? map_point_weak_direction_score[lhs]
-                            : 0.0;
-                    const double rhs_weak_score =
-                        rhs < map_point_weak_direction_score.size()
-                            ? map_point_weak_direction_score[rhs]
-                            : 0.0;
-                    if (std::abs(lhs_weak_score - rhs_weak_score) > 1e-9)
-                    {
-                        return lhs_weak_score > rhs_weak_score;
-                    }
-                }
-                return map_point_quality_score[lhs] > map_point_quality_score[rhs];
-            });
-    }
-
-    for(const size_t i : candidate_indices)
+    for(const size_t i : adaptive_plan.candidate_indices)
     {
         const PointType &point_body = feats_down_body->points[i];
 
@@ -2224,20 +1490,8 @@ void map_incremental()
             continue;
         }
 
-        bool allow_insert =
-            allow_map_insert_point(
-                point_body,
-                i,
-                frame_degenerate,
-                normal_bin_counts,
-                quality_rejected_num,
-                invalid_quality_rejected_num,
-                direction_rejected_num,
-                persistent_quota_rejected_num,
-                persistent_insert_accepted_num,
-                persistent_insert_quota,
-                novel_accepted_num,
-                novel_rejected_num);
+        const bool allow_insert =
+            allow_adaptive_map_insert(adaptive_plan, i, point_body);
 
         if (!allow_insert)
         {
@@ -2259,121 +1513,15 @@ void map_incremental()
     p_map->addPoints(point_no_need_downsample, false);
 
     const size_t add_num =
-        point_to_add->size() +
-        point_no_need_downsample->size();
-
-    map_update_count++;
-    last_map_add_num = add_num;
-    total_map_added += add_num;
-    total_quality_rejected +=
-        quality_rejected_num + invalid_quality_rejected_num + novel_rejected_num;
-    total_direction_rejected += direction_rejected_num;
-    total_persistent_quota_rejected += persistent_quota_rejected_num;
-    total_voxel_rejected += voxel_rejected_num;
-
-    // 所有本帧和累计统计更新完成后再记录，保证 CSV 中各字段属于同一帧状态。
-    write_runtime_log_row(
-        frame_degenerate,
+        point_to_add->size() + point_no_need_downsample->size();
+    finish_adaptive_map_update(
+        adaptive_plan,
         add_num,
         point_to_add->size(),
         point_no_need_downsample->size(),
-        quality_rejected_num,
-        invalid_quality_rejected_num,
-        direction_rejected_num,
-        persistent_quota_rejected_num,
-        novel_accepted_num,
-        novel_rejected_num,
         voxel_rejected_num,
         rejected_num);
 
-    const bool degenerate_state_changed =
-        adaptive_map_enable &&
-        (!has_previous_degenerate_state ||
-         frame_degenerate != previous_frame_degenerate);
-    const bool degeneracy_mode_changed =
-        adaptive_map_enable &&
-        (!has_previous_degeneracy_mode ||
-         static_cast<int>(current_degeneracy_mode) != previous_degeneracy_mode);
-    const bool periodic_log =
-        runtime_log_interval_frames > 0 &&
-        map_update_count % runtime_log_interval_frames == 0;
-
-    if (runtime_console_enable && degenerate_state_changed)
-    {
-        std::cout << "[Degeneracy] frame=" << map_update_count
-                  << ", state=" << (frame_degenerate ? "ENTER" : "EXIT")
-                  << ", effective=" << effct_feat_num
-                  << ", effective_ratio=" << frame_effective_ratio
-                  << ", normal_eigen_ratio=" << frame_normal_eigen_ratio
-                  << ", mean_residual=" << res_mean_last
-                  << std::endl;
-    }
-
-    if (runtime_console_enable && degeneracy_mode_changed)
-    {
-        std::cout << "[DegeneracyMode] frame=" << map_update_count
-                  << ", mode=" << degeneracy_mode_name(current_degeneracy_mode)
-                  << ", window_ready=" << (degeneracy_window_ready ? "Y" : "N")
-                  << ", deg_ratio=" << window_degenerate_ratio
-                  << ", normal_mean=" << window_normal_eigen_ratio_mean
-                  << ", residual_cv=" << window_residual_cv
-                  << ", path=" << window_path_length
-                  << ", yaw=" << window_yaw_change
-                  << ", cond_mean=" << window_condition_number_mean
-                  << ", streak=" << window_recent_degenerate_streak
-                  << std::endl;
-    }
-
-    if (runtime_console_enable &&
-        (periodic_log || degenerate_state_changed || degeneracy_mode_changed))
-    {
-        const double insert_ratio =
-            feats_down_body->empty()
-                ? 0.0
-                : static_cast<double>(add_num) /
-                      static_cast<double>(feats_down_body->size());
-
-        std::ostringstream line;
-        line << std::fixed << std::setprecision(3)
-             << "[Runtime] frame=" << map_update_count
-             << " pos=(" << state_point.pos.x() << ","
-             << state_point.pos.y() << "," << state_point.pos.z() << ")"
-             << " points=" << feats_down_body->size()
-             << " effective=" << effct_feat_num
-             << " eff_ratio=" << frame_effective_ratio
-             << " residual(mean/median/mad)=" << res_mean_last << "/"
-             << frame_residual_median << "/" << frame_residual_mad
-             << " normal_ratio=" << frame_normal_eigen_ratio
-             << " cond=" << frame_condition_number
-             << " degenerate=" << (frame_degenerate ? "Y" : "N")
-             << " mode=" << degeneracy_mode_name(current_degeneracy_mode)
-             << " win(deg/norm/cv/path/yaw/cond/streak)="
-             << window_degenerate_ratio << "/"
-             << window_normal_eigen_ratio_mean << "/"
-             << window_residual_cv << "/"
-             << window_path_length << "/"
-             << window_yaw_change << "/"
-             << window_condition_number_mean << "/"
-             << window_recent_degenerate_streak
-             << " add=" << add_num
-             << " insert_ratio=" << insert_ratio
-             << " reject(q/d/v)="
-             << quality_rejected_num + invalid_quality_rejected_num + novel_rejected_num
-             << "/" << direction_rejected_num
-             << "/" << voxel_rejected_num
-             << " map=" << p_map->size()
-             << " total(add/q/d/v)="
-             << total_map_added << "/"
-             << total_quality_rejected << "/"
-             << total_direction_rejected << "/"
-             << total_voxel_rejected;
-        std::cout << line.str() << std::endl;
-    }
-
-    previous_frame_degenerate = frame_degenerate;
-    has_previous_degenerate_state = true;
-    previous_degeneracy_mode = static_cast<int>(current_degeneracy_mode);
-    has_previous_degeneracy_mode = true;
 }
 
 
@@ -2439,6 +1587,18 @@ public:
         this->declare_parameter<double>("mapping.acc_cov", 0.1);
         this->declare_parameter<double>("mapping.b_gyr_cov", 0.0001);
         this->declare_parameter<double>("mapping.b_acc_cov", 0.0001);
+        this->declare_parameter<bool>("transition_guard.enable", false);
+        this->declare_parameter<int>("transition_guard.history_size", 30);
+        this->declare_parameter<int>("transition_guard.min_history", 15);
+        this->declare_parameter<double>("transition_guard.mad_scale", 4.0);
+        this->declare_parameter<double>("transition_guard.translation_floor", 0.10);
+        this->declare_parameter<double>("transition_guard.rotation_floor", 0.03);
+        this->declare_parameter<double>("transition_guard.localizability_drop_ratio", 0.80);
+        this->declare_parameter<double>("transition_guard.turn_rate_threshold", 0.30);
+        this->declare_parameter<double>("transition_guard.residual_context_threshold", 0.15);
+        this->declare_parameter<double>("transition_guard.map_residual_sigma_scale", 0.75);
+        this->declare_parameter<double>("transition_guard.map_min_quality_score", 0.94);
+        this->declare_parameter<int>("transition_guard.map_hold_frames", 5);
         this->declare_parameter<int>("mapping.imu_init_num", 200);
         this->declare_parameter<bool>("mapping.extrinsic_est_en", false);
 
@@ -2453,7 +1613,7 @@ public:
         // ===================== idea 模块参数声明 =====================
         //
         // adaptive_map：单帧退化感知地图更新。
-        //   作用位置：allow_map_insert_point() 和 is_current_frame_degenerate()。
+        //   逐点插入策略位于独立 AdaptiveMapStrategy 模块。
         //   主要控制“当前帧哪些点允许写入 ikd-tree 地图”。
         //
         // adaptive_window：动态滑动窗口退化判断。
@@ -2462,6 +1622,8 @@ public:
 
         // 是否启用 idea 模块的退化感知地图更新；关闭时尽量保持原 FAST-LIO2 入图行为。
         this->declare_parameter<bool>("adaptive_map.enable", false);
+        // 第一阶段纯诊断：运行退化标签和窗口状态机，但不改变地图插入或滤波更新。
+        this->declare_parameter<bool>("degeneracy_diagnostic.enable", false);
         // 单帧有效点到面约束数量下限，低于该值认为当前帧几何约束不足。
         this->declare_parameter<int>("adaptive_map.min_effective_points", 200);
         // 允许入图的最小 LiDAR 量程，过滤盲区附近和过近的不稳定点。
@@ -2518,7 +1680,6 @@ public:
         this->declare_parameter<double>("adaptive_window.persistent_insert_quota_scale", 1.0);
         this->declare_parameter<int>("adaptive_window.persistent_insert_quota_min", 0);
         this->declare_parameter<int>("adaptive_window.persistent_insert_quota_max", 0);
-
         // ===================== 参数读取 =====================
         this->get_parameter("common.lid_topic", lid_topic);
         this->get_parameter("common.imu_topic", imu_topic);
@@ -2548,13 +1709,58 @@ public:
 
         this->get_parameter("mapping.filter_size_surf", filter_size_surf);
         this->get_parameter("mapping.filter_size_map", filter_size_map);
+        this->get_parameter("transition_guard.enable", transition_guard_enable);
+        this->get_parameter("transition_guard.history_size", transition_guard_history_size);
+        this->get_parameter("transition_guard.min_history", transition_guard_min_history);
+        this->get_parameter("transition_guard.mad_scale", transition_guard_mad_scale);
+        this->get_parameter("transition_guard.translation_floor", transition_guard_translation_floor);
+        this->get_parameter("transition_guard.rotation_floor", transition_guard_rotation_floor);
+        this->get_parameter(
+            "transition_guard.localizability_drop_ratio",
+            transition_guard_localizability_drop_ratio);
+        this->get_parameter(
+            "transition_guard.turn_rate_threshold",
+            transition_guard_turn_rate_threshold);
+        this->get_parameter(
+            "transition_guard.residual_context_threshold",
+            transition_guard_residual_context_threshold);
+        this->get_parameter(
+            "transition_guard.map_residual_sigma_scale",
+            transition_guard_map_residual_sigma_scale);
+        this->get_parameter(
+            "transition_guard.map_min_quality_score",
+            transition_guard_map_min_quality_score);
+        this->get_parameter(
+            "transition_guard.map_hold_frames",
+            transition_guard_map_hold_frames);
+        transition_guard_history_size = std::max(5, transition_guard_history_size);
+        transition_guard_min_history = std::clamp(
+            transition_guard_min_history, 3, transition_guard_history_size);
+        transition_guard_mad_scale = std::max(0.0, transition_guard_mad_scale);
+        transition_guard_translation_floor = std::max(
+            0.0, transition_guard_translation_floor);
+        transition_guard_rotation_floor = std::max(
+            0.0, transition_guard_rotation_floor);
+        transition_guard_localizability_drop_ratio = std::clamp(
+            transition_guard_localizability_drop_ratio, 0.0, 1.0);
+        transition_guard_turn_rate_threshold = std::max(
+            0.0, transition_guard_turn_rate_threshold);
+        transition_guard_residual_context_threshold = std::max(
+            0.0, transition_guard_residual_context_threshold);
+        transition_guard_map_residual_sigma_scale = std::clamp(
+            transition_guard_map_residual_sigma_scale, 0.1, 1.0);
+        transition_guard_map_min_quality_score = std::clamp(
+            transition_guard_map_min_quality_score, 0.0, 1.0);
+        transition_guard_map_hold_frames = std::max(
+            0, transition_guard_map_hold_frames);
 
         // ===================== idea 模块参数读取：adaptive_map =====================
         //
         // 这些参数会写入全局变量，并在两个地方使用：
         //   1. is_current_frame_degenerate()：判断当前帧是否静态退化；
-        //   2. allow_map_insert_point()：决定每个候选点是否允许进入 ikd-tree 地图。
+        //   2. AdaptiveMapStrategy：决定候选点是否允许进入 ikd-tree 地图。
         this->get_parameter("adaptive_map.enable", adaptive_map_enable);
+        this->get_parameter("degeneracy_diagnostic.enable", degeneracy_diagnostic_enable);
         this->get_parameter("adaptive_map.min_effective_points", adaptive_min_effective_points);
         this->get_parameter("adaptive_map.min_range", adaptive_min_range);
         this->get_parameter("adaptive_map.max_range", adaptive_max_range);
@@ -2602,6 +1808,33 @@ public:
         adaptive_window_enter_count_threshold = std::max(1, adaptive_window_enter_count_threshold);
         adaptive_window_exit_count_threshold = std::max(1, adaptive_window_exit_count_threshold);
 
+        AdaptiveMapStrategyConfig strategy_config;
+        strategy_config.enabled = adaptive_map_enable;
+        strategy_config.min_range = adaptive_min_range;
+        strategy_config.max_range = adaptive_max_range;
+        strategy_config.residual_scale = adaptive_residual_scale;
+        strategy_config.residual_robust_sigma = adaptive_residual_robust_sigma;
+        strategy_config.min_quality_score = adaptive_min_quality_score;
+        strategy_config.normal_bin_angle_deg = adaptive_normal_bin_angle_deg;
+        strategy_config.max_points_per_normal_bin =
+            adaptive_max_points_per_normal_bin;
+        strategy_config.max_novel_points_per_frame =
+            adaptive_max_novel_points_per_frame;
+        strategy_config.persistent_direction_quota_scale =
+            adaptive_window_persistent_direction_quota_scale;
+        strategy_config.persistent_novel_quota_scale =
+            adaptive_window_persistent_novel_quota_scale;
+        strategy_config.persistent_insert_quota_scale =
+            adaptive_window_persistent_insert_quota_scale;
+        strategy_config.persistent_insert_quota_min =
+            adaptive_window_persistent_insert_quota_min;
+        strategy_config.persistent_insert_quota_max =
+            adaptive_window_persistent_insert_quota_max;
+        strategy_config.transition_guard_enabled = transition_guard_enable;
+        strategy_config.transition_guard_residual_sigma_scale =
+            transition_guard_map_residual_sigma_scale;
+        strategy_config.transition_guard_min_quality_score =
+            transition_guard_map_min_quality_score;
         this->get_parameter("mapping.extrinsic_T", extrinsic_T_vec);
         this->get_parameter("mapping.extrinsic_R", extrinsic_R_vec);
 
@@ -2626,6 +1859,9 @@ public:
         this->get_parameter("mapping.move_threshold", move_threshold);
         this->get_parameter("mapping.local_map_enable", local_map_enable);
         this->get_parameter("mapping.local_map_delete_enable", local_map_delete_enable);
+
+        strategy_config.plane_residual_threshold = plane_residual_threshold;
+        adaptive_map_strategy.configure(strategy_config);
 
         Eigen::Vector3d extrinsic_T = Eigen::Vector3d::Zero();
         Eigen::Matrix3d extrinsic_R = Eigen::Matrix3d::Identity();
@@ -2688,11 +1924,28 @@ public:
                   << "/" << local_map_delete_enable
                   << std::endl;
         std::cout << "[Config] adaptive_map=" << adaptive_map_enable
+                  << ", diagnostic_only=" << degeneracy_diagnostic_enable
                   << ", effective_min=" << adaptive_min_effective_points
                   << ", effective_ratio_min=" << adaptive_min_effective_ratio
                   << ", residual_max=" << adaptive_max_mean_residual
                   << ", normal_ratio_min=" << adaptive_min_normal_eigen_ratio
                   << ", quality_min=" << adaptive_min_quality_score
+                  << std::endl;
+        std::cout << "[Config] transition_guard=" << transition_guard_enable
+                  << ", history=" << transition_guard_min_history
+                  << "/" << transition_guard_history_size
+                  << ", innovation_floor(trans/rot)="
+                  << transition_guard_translation_floor << "/"
+                  << transition_guard_rotation_floor
+                  << ", mad_scale=" << transition_guard_mad_scale
+                  << ", localizability_drop="
+                  << transition_guard_localizability_drop_ratio
+                  << ", map_residual_sigma_scale="
+                  << transition_guard_map_residual_sigma_scale
+                  << ", map_quality_min="
+                  << transition_guard_map_min_quality_score
+                  << ", map_hold_frames="
+                  << transition_guard_map_hold_frames
                   << std::endl;
         // 打印 idea 动态窗口参数：
         //   persistent_ratio 表示窗口内退化帧比例阈值；
@@ -2736,19 +1989,20 @@ public:
 
         if (p_pre->lidar_type == AVIA)
         {
-            sub_pcl_livox_ = this->create_subscription<livox_ros_driver2::msg::CustomMsg>(lid_topic,20,livox_pcl_cbk);
+            sub_pcl_livox_ = this->create_subscription<livox_ros_driver2::msg::CustomMsg>(
+                lid_topic, 20, livox_pcl_cbk);
 
             std::cout << "Subscribe Livox CustomMsg." << std::endl;        }
         else
         {
-            sub_pcl_pc_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(lid_topic,rclcpp::SensorDataQoS(),standard_pcl_cbk);
+            sub_pcl_pc_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+                lid_topic, rclcpp::SensorDataQoS(), standard_pcl_cbk);
 
             std::cout << "Subscribe standard PointCloud2." << std::endl;
         }
 
-        auto imu_qos = rclcpp::SensorDataQoS();
-        imu_qos.keep_last(2000);
-        sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(imu_topic, imu_qos, imu_cbk);
+        sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(
+            imu_topic, 10, imu_cbk);
 
        
         pub_cloud_body_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body",10);
@@ -2834,6 +2088,7 @@ private:
         
         // 1. 使用 IKFoM 完成 IMU 状态传播和点云去畸变。
         p_imu->Process(Measures, kf, feats_undistort);
+        update_imu_angular_velocity_diagnostics(Measures);
         refreshStatePoint();
 
         if (!p_imu->isInitialized())
@@ -2872,13 +2127,24 @@ private:
         // 4、局部地图管理
         lasermap_fov_segment();
 
-        // 5. 与官方 FAST-LIO2 一致，通过唯一的 h_share_model() 完成 IKFoM 迭代更新。
+        // 5. 保存 IMU 传播先验，执行且仅执行一次原始 LiDAR 更新。
+        // 先验到后验的异常创新只作为后续地图写入质量信号。
+        const auto state_before_lidar_update = kf.get_x();
+        begin_transition_guard_frame();
         double solve_H_time = 0.0;
         kf.update_iterated_dyn_share_modified(
             laser_point_cov,
             solve_H_time);
 
+        update_localizability_diagnostics();
+        detect_transition_guard_innovation(
+            state_before_lidar_update,
+            kf.get_x());
+
+        update_transition_guard_history();
+
         refreshStatePoint();
+        update_pose_covariance_diagnostics();
 
         // adaptive_map 关闭时保持官方 FAST-LIO2 行为：只要观测模型存在有效点，
         // 就使用滤波后的最终状态继续增量更新地图。额外的有效点数量门槛仅属于
@@ -2889,6 +2155,7 @@ private:
 
         if(!scan_update_success)
         {
+            total_scan_update_failures++;
             std::cout << "[Warning][ScanToMap] update failed: effective="
                       << effct_feat_num
                       << ", required=" << scan_match_min_effective_points
@@ -2940,6 +2207,15 @@ private:
      * [12] window_condition_number_mean
      * [13] window_recent_degenerate_streak
      * [14] insert_ratio，当前帧允许入图点占下采样点比例
+     * [15] localizability_observed_voxels
+     * [16] localizability_planarity_mean
+     * [17:19] localizability field eigenvalues，升序
+     * [20] localizability_f0 = lambda_min / trace(M)
+     * [21] localizability_lambda0 = lambda_min / observed_voxels
+     * [22:24] translation posterior covariance eigenvalues，升序，m^2
+     * [25:27] translation maximum-uncertainty direction
+     * [28:30] rotation posterior covariance eigenvalues，升序，rad^2
+     * [31:33] rotation maximum-uncertainty direction
      */
     void publish_degeneracy_info(const MeasureGroup &meas)
     {
@@ -2949,28 +2225,15 @@ private:
         }
 
         std_msgs::msg::Float64MultiArray msg;
-        msg.data.resize(15, 0.0);
         // 后端关键帧点云 /cloud_registered_body 使用 lidar_end_time。
         // 退化先验必须使用同一帧末时刻，避免后端将其错配到相邻关键帧。
-        msg.data[0] = meas.lidar_end_time;
-        msg.data[1] = static_cast<double>(current_degeneracy_mode);
-        msg.data[2] = previous_frame_degenerate ? 1.0 : 0.0;
-        msg.data[3] = frame_effective_ratio;
-        msg.data[4] = res_mean_last;
-        msg.data[5] = frame_normal_eigen_ratio;
-        msg.data[6] = frame_condition_number;
-        msg.data[7] = window_degenerate_ratio;
-        msg.data[8] = window_normal_eigen_ratio_mean;
-        msg.data[9] = window_residual_cv;
-        msg.data[10] = window_path_length;
-        msg.data[11] = window_yaw_change;
-        msg.data[12] = window_condition_number_mean;
-        msg.data[13] = static_cast<double>(window_recent_degenerate_streak);
-        msg.data[14] =
+        const double insert_ratio =
             feats_down_body->empty()
                 ? 0.0
                 : static_cast<double>(last_map_add_num) /
                       static_cast<double>(feats_down_body->size());
+        msg.data = build_adaptive_degeneracy_info(
+            meas.lidar_end_time, insert_ratio);
         pub_degeneracy_info_->publish(msg);
     }
 
@@ -2978,7 +2241,7 @@ private:
     // 发布当前帧点云
     void publish_current_cloud_body(const MeasureGroup &meas)
     {
-        if(!scan_bodyframe_pub_en)
+        if(!scan_bodyframe_pub_en || pub_cloud_body_->get_subscription_count() == 0)
         {
             return;
         }
@@ -3091,7 +2354,7 @@ private:
     */
     void publish_current_cloud_world(const MeasureGroup &meas)
     {
-        if(!scan_publish_en)
+        if(!scan_publish_en || pub_cloud_world_->get_subscription_count() == 0)
         {
             return;
         }
@@ -3135,7 +2398,7 @@ private:
             return;
         }
 
-        if (map_publish_en)
+        if (map_publish_en && pub_map_->get_subscription_count() > 0)
         {
             PointCloudXYZI::Ptr cloud_body =
                 dense_publish_en ? feats_undistort : feats_down_body;
@@ -3161,14 +2424,17 @@ private:
             }
         }
 
-        PointCloudXYZI::Ptr ikdtree_map = p_map->getMapCloud();
-        if (ikdtree_map != nullptr && !ikdtree_map->empty())
+        if (pub_ikdtree_map_->get_subscription_count() > 0)
         {
-            sensor_msgs::msg::PointCloud2 ikdtree_map_msg;
-            pcl::toROSMsg(*ikdtree_map, ikdtree_map_msg);
-            ikdtree_map_msg.header.stamp = get_ros_time(meas.lidar_end_time);
-            ikdtree_map_msg.header.frame_id = "camera_init";
-            pub_ikdtree_map_->publish(ikdtree_map_msg);
+            PointCloudXYZI::Ptr ikdtree_map = p_map->getMapCloud();
+            if (ikdtree_map != nullptr && !ikdtree_map->empty())
+            {
+                sensor_msgs::msg::PointCloud2 ikdtree_map_msg;
+                pcl::toROSMsg(*ikdtree_map, ikdtree_map_msg);
+                ikdtree_map_msg.header.stamp = get_ros_time(meas.lidar_end_time);
+                ikdtree_map_msg.header.frame_id = "camera_init";
+                pub_ikdtree_map_->publish(ikdtree_map_msg);
+            }
         }
     }
 

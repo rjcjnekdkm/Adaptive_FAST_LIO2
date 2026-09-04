@@ -24,9 +24,17 @@ struct RuntimeLogRow
     int frame = 0;
     double lidar_begin_time = 0.0;
     double lidar_end_time = 0.0;
+    // 数据完整性计数：用于区分订阅丢帧、同步缺失和 scan-to-map 更新失败。
+    std::uint64_t received_lidar_messages = 0;
+    std::uint64_t synchronized_scans = 0;
+    std::uint64_t scan_update_failures = 0;
+    double imu_angular_velocity_mean = 0.0;
+    double imu_angular_velocity_max = 0.0;
 
     // 当前实验是否启用 adaptive_map，以及本帧是否被判定为退化帧。
     bool adaptive_map = false;
+    // 仅检测/记录状态机是否启用；启用时不代表会改变地图插入。
+    bool degeneracy_diagnostic = false;
     bool degenerate = false;
     int degeneracy_mode = 0;
     bool window_ready = false;
@@ -52,6 +60,45 @@ struct RuntimeLogRow
     double residual_mad = 0.0;
     double normal_eigen_ratio = 0.0;
     double condition_number = 1.0;
+
+    // 当前 scan-to-map 实际观测到的局部地图体素可定位性场。
+    // M = sum(rho_v * n_v * n_v^T)，其中每个地图体素只计一次。
+    std::size_t localizability_observed_voxels = 0;
+    double localizability_planarity_mean = 0.0;
+    double localizability_lambda_min = 0.0;
+    double localizability_lambda_mid = 0.0;
+    double localizability_lambda_max = 0.0;
+    double localizability_f0 = 0.0;
+    double localizability_lambda0 = 0.0;
+
+    // 异常创新检测：仅用于诊断和收紧地图写入质量门限。
+    bool transition_guard_triggered = false;
+    bool transition_guard_turn_residual_triggered = false;
+    bool transition_guard_map_active = false;
+    int transition_guard_map_hold_remaining = 0;
+    bool transition_guard_history_ready = false;
+    double lidar_nominal_correction_translation = 0.0;
+    double lidar_nominal_correction_rotation = 0.0;
+    double lidar_correction_translation_threshold = 0.0;
+    double lidar_correction_rotation_threshold = 0.0;
+    double transition_guard_localizability_drop = 1.0;
+    double transition_guard_nominal_residual = 0.0;
+
+    // IKFoM 后验位姿边缘协方差的主值和最大不确定方向。
+    // 平移块单位为 m^2，旋转块单位为 rad^2；仅用于诊断，不参与滤波。
+    double translation_cov_eigen_min = 0.0;
+    double translation_cov_eigen_mid = 0.0;
+    double translation_cov_eigen_max = 0.0;
+    double translation_weak_dir_x = 0.0;
+    double translation_weak_dir_y = 0.0;
+    double translation_weak_dir_z = 0.0;
+    double rotation_cov_eigen_min = 0.0;
+    double rotation_cov_eigen_mid = 0.0;
+    double rotation_cov_eigen_max = 0.0;
+    double rotation_weak_dir_x = 0.0;
+    double rotation_weak_dir_y = 0.0;
+    double rotation_weak_dir_z = 0.0;
+
     double window_degenerate_ratio = 0.0;
     double window_normal_eigen_ratio_mean = 0.0;
     double window_residual_cv = 0.0;
@@ -59,6 +106,8 @@ struct RuntimeLogRow
     double window_yaw_change = 0.0;
     double window_condition_number_mean = 1.0;
     int window_recent_degenerate_streak = 0;
+    double window_localizability_f0_mean = 0.0;
+    double window_localizability_lambda0_mean = 0.0;
 
     // 本帧最终入图数量及其组成。insert_ratio = map_added / downsampled_points。
     std::size_t map_added = 0;

@@ -21,7 +21,7 @@ find_package(OpenMP REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(PCL REQUIRED COMPONENTS common io filters kdtree)
+find_package(PCL REQUIRED COMPONENTS common io filters kdtree registration)
 find_package(GTSAM REQUIRED)
 find_package(Threads REQUIRED)
 find_package(tf2 REQUIRED)
@@ -40,6 +40,8 @@ add_executable(adaptive_fastlio_mapping
   src/adaptive_preprocess.cpp
   src/adaptive_imu_process.cpp
   src/adaptive_map_manager.cpp
+  src/adaptive_map_strategy.cpp
+  src/adaptive_frontend_module.cpp
   src/adaptive_runtime_logger.cpp
 )
 

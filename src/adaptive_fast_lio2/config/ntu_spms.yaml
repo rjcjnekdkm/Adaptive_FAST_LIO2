@@ -18,6 +18,23 @@ adaptive_fastlio_mapping:
     point_filter_num: 3
     feature_extract_enable: false
 
+    # 监测 IMU 先验到 LiDAR 后验的异常状态创新。该信号只用于收紧
+    # Adaptive Map 的逐点入图质量门限，不回滚或重算 ESIKF，不改测量噪声。
+    transition_guard:
+      enable: false
+      history_size: 30
+      min_history: 15
+      mad_scale: 4.0
+      translation_floor: 0.10
+      rotation_floor: 0.03
+      localizability_drop_ratio: 0.80
+      turn_rate_threshold: 0.30
+      residual_context_threshold: 0.15
+      map_residual_sigma_scale: 0.75
+      map_min_quality_score: 0.94
+      # Trigger frame plus five following LiDAR frames use stricter map quality.
+      map_hold_frames: 5
+
     publish:
       scan_publish_en: true
       dense_publish_en: true
@@ -91,7 +108,7 @@ adaptive_fastlio_mapping:
     runtime_log:
       summary_interval_frames: 1000000
       sensor_debug: false
-      console_enable: false
+      console_enable: true
       csv_enable: true
       csv_append: false
       csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/ntu_spms/spms_01/ours_full/adaptive_runtime.csv"

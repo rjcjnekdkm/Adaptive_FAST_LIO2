@@ -43,7 +43,9 @@ def generate_launch_description():
     optimized_map_leaf_size = LaunchConfiguration("optimized_map_leaf_size")
     frontend_runtime_csv_path = LaunchConfiguration("frontend_runtime_csv_path")
     adaptive_map_enable = LaunchConfiguration("adaptive_map_enable")
+    degeneracy_diagnostic_enable = LaunchConfiguration("degeneracy_diagnostic_enable")
     adaptive_window_enable = LaunchConfiguration("adaptive_window_enable")
+    transition_guard_enable = LaunchConfiguration("transition_guard_enable")
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
@@ -240,10 +242,22 @@ def generate_launch_description():
         description="Enable adaptive point-quality filtering and map insertion control"
     )
 
+    declare_degeneracy_diagnostic_enable_cmd = DeclareLaunchArgument(
+        "degeneracy_diagnostic_enable",
+        default_value="false",
+        description="Run degeneracy labels/window for logging without changing map insertion"
+    )
+
     declare_adaptive_window_enable_cmd = DeclareLaunchArgument(
         "adaptive_window_enable",
         default_value="true",
         description="Enable sliding-window persistent-degeneracy state machine"
+    )
+
+    declare_transition_guard_enable_cmd = DeclareLaunchArgument(
+        "transition_guard_enable",
+        default_value="false",
+        description="Enable innovation-aware Adaptive Map quality gating"
     )
 
     adaptive_lio_node = Node(
@@ -255,7 +269,9 @@ def generate_launch_description():
             {"use_sim_time": use_sim_time},
             {"runtime_log.csv_path": frontend_runtime_csv_path},
             {"adaptive_map.enable": adaptive_map_enable},
-            {"adaptive_window.enable": adaptive_window_enable}
+            {"degeneracy_diagnostic.enable": degeneracy_diagnostic_enable},
+            {"adaptive_window.enable": adaptive_window_enable},
+            {"transition_guard.enable": transition_guard_enable}
         ],
         output="screen"
     )
@@ -327,7 +343,9 @@ def generate_launch_description():
     ld.add_action(declare_optimized_map_leaf_size_cmd)
     ld.add_action(declare_frontend_runtime_csv_path_cmd)
     ld.add_action(declare_adaptive_map_enable_cmd)
+    ld.add_action(declare_degeneracy_diagnostic_enable_cmd)
     ld.add_action(declare_adaptive_window_enable_cmd)
+    ld.add_action(declare_transition_guard_enable_cmd)
 
     ld.add_action(adaptive_lio_node)
     ld.add_action(adaptive_backend_node)

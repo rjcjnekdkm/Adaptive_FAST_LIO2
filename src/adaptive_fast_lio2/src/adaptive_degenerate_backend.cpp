@@ -260,6 +260,16 @@ struct DegeneracyInfo
     double window_condition_number_mean = 1.0;
     // 当前帧实际进入 ikd-tree 的点占下采样点比例，用于衡量前端筛选强度。
     double insert_ratio = 1.0;
+    // 第一阶段新增诊断量。后端仅缓存，暂不参与 severity、回环或图优化。
+    std::size_t localizability_observed_voxels = 0;
+    double localizability_planarity_mean = 0.0;
+    Eigen::Vector3d localizability_eigenvalues = Eigen::Vector3d::Zero();
+    double localizability_f0 = 0.0;
+    double localizability_lambda0 = 0.0;
+    Eigen::Vector3d translation_cov_eigenvalues = Eigen::Vector3d::Zero();
+    Eigen::Vector3d translation_weak_direction = Eigen::Vector3d::Zero();
+    Eigen::Vector3d rotation_cov_eigenvalues = Eigen::Vector3d::Zero();
+    Eigen::Vector3d rotation_weak_direction = Eigen::Vector3d::Zero();
     /**
      * @brief 计算后端使用的连续退化强度 D_i ∈ [0,1]。
      *
@@ -776,6 +786,7 @@ private:
      * [7] window_degenerate_ratio
      * [12] window_condition_number_mean
      * [14] insert_ratio
+     * [15:33] 第一阶段局部可定位性场和后验位姿协方差诊断量
      *
      * 后端暂时只取和“退化感知验证/加权”直接相关的字段。
      */
@@ -797,6 +808,25 @@ private:
         info.window_degenerate_ratio = msg->data[7];
         info.window_condition_number_mean = msg->data[12];
         info.insert_ratio = msg->data[14];
+        // 保持对旧版 15 元消息的兼容；新增字段存在时才解析。
+        if (msg->data.size() >= 34)
+        {
+            info.localizability_observed_voxels =
+                static_cast<std::size_t>(std::max(0.0, msg->data[15]));
+            info.localizability_planarity_mean = msg->data[16];
+            info.localizability_eigenvalues =
+                Eigen::Vector3d(msg->data[17], msg->data[18], msg->data[19]);
+            info.localizability_f0 = msg->data[20];
+            info.localizability_lambda0 = msg->data[21];
+            info.translation_cov_eigenvalues =
+                Eigen::Vector3d(msg->data[22], msg->data[23], msg->data[24]);
+            info.translation_weak_direction =
+                Eigen::Vector3d(msg->data[25], msg->data[26], msg->data[27]);
+            info.rotation_cov_eigenvalues =
+                Eigen::Vector3d(msg->data[28], msg->data[29], msg->data[30]);
+            info.rotation_weak_direction =
+                Eigen::Vector3d(msg->data[31], msg->data[32], msg->data[33]);
+        }
         std::lock_guard<std::mutex> lock(mtx_);
         degeneracy_queue_.push_back(info);
         while (degeneracy_queue_.size() > sync_queue_size_)
