@@ -84,6 +84,13 @@ struct RuntimeLogRow
     std::uint64_t total_direction_rejected = 0;
     std::uint64_t total_persistent_quota_rejected = 0;
     std::uint64_t total_voxel_rejected = 0;
+    bool scan_end_use_last_point = false;
+    double scan_last_offset_s = 0.0;
+    double scan_max_offset_s = 0.0;
+    bool scan_end_fallback = false;
+    std::size_t sync_imu_samples = 0;
+    double sync_imu_first_time = 0.0;
+    double sync_imu_last_time = 0.0;
 };
 
 /**

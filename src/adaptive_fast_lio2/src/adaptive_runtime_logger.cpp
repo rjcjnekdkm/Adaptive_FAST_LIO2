@@ -126,7 +126,14 @@ void AdaptiveRuntimeLogger::write(const RuntimeLogRow &row)
           << row.total_quality_rejected << ","
           << row.total_direction_rejected << ","
           << row.total_persistent_quota_rejected << ","
-          << row.total_voxel_rejected
+          << row.total_voxel_rejected << ","
+          << row.scan_end_use_last_point << ","
+          << row.scan_last_offset_s << ","
+          << row.scan_max_offset_s << ","
+          << row.scan_end_fallback << ","
+          << row.sync_imu_samples << ","
+          << row.sync_imu_first_time << ","
+          << row.sync_imu_last_time
           << std::endl;
 }
 
@@ -162,6 +169,8 @@ void AdaptiveRuntimeLogger::writeHeader()
           << "quality_rejected,invalid_quality_rejected,direction_rejected,persistent_quota_rejected,"
           << "novel_accepted,novel_rejected,voxel_rejected,total_rejected,"
           << "map_size,total_map_added,total_quality_rejected,"
-          << "total_direction_rejected,total_persistent_quota_rejected,total_voxel_rejected"
+          << "total_direction_rejected,total_persistent_quota_rejected,total_voxel_rejected,"
+          << "scan_end_use_last_point,scan_last_offset_s,scan_max_offset_s,scan_end_fallback,"
+          << "sync_imu_samples,sync_imu_first_time,sync_imu_last_time"
           << std::endl;
 }

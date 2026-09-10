@@ -1,0 +1,13 @@
+# rosbag2 转换后没有保留 NTU VIRAL 原始 QoS。
+# 显式提高播放器的发布历史深度，避免点云处理短暂滞后时覆盖未送达的消息。
+/os1_cloud_node1/points:
+  history: keep_last
+  depth: 200
+  reliability: reliable
+  durability: volatile
+
+/imu/imu:
+  history: keep_last
+  depth: 2000
+  reliability: reliable
+  durability: volatile

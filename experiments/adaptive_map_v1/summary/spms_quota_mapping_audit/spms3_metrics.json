@@ -1,0 +1,136 @@
+{
+  "missing_raw": [],
+  "gt_sha256": "242a9c6e3331aefcd2939b68226fe629448167bf3339784ca85750f8af552da5",
+  "common_gt_gaps_over_1s": [
+    {
+      "start": 99.59726285934448,
+      "end": 204.2944691181183
+    },
+    {
+      "start": 252.29394602775574,
+      "end": 284.69237780570984
+    },
+    {
+      "start": 289.7922086715698,
+      "end": 291.29218196868896
+    },
+    {
+      "start": 293.3922293186188,
+      "end": 311.5916609764099
+    },
+    {
+      "start": 351.190616607666,
+      "end": 370.59029626846313
+    }
+  ],
+  "runs": [
+    {
+      "run": "control/run01",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms3/transient_novel_ab/control/run01/runtime.csv",
+      "sha256": "35679f035108ed883cd8d8402479acee92bf9f474be82b130e1e92a57c30cad2",
+      "frames": 3617,
+      "common_gt_samples": 1421,
+      "prefix_samples": 442,
+      "prefix_alignment_singular_values": [
+        60129.16887914033,
+        3427.855338651133,
+        6.073043980707871
+      ],
+      "prefix_aligned_rmse": 0.38310601260087807,
+      "last_20s_error_median": 0.03124390370360729,
+      "transient_novel_accepted": 12924,
+      "transient_novel_rejected": 34657,
+      "submitted_map_points": 1295854
+    },
+    {
+      "run": "control/run02",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms3/transient_novel_ab/control/run02/runtime.csv",
+      "sha256": "066df1c088eae0f72e6c297fd85a77531c7c7610fa478708282174b48cad55eb",
+      "frames": 3596,
+      "common_gt_samples": 1421,
+      "prefix_samples": 442,
+      "prefix_alignment_singular_values": [
+        60208.92433184637,
+        3441.650532926969,
+        5.991378778813593
+      ],
+      "prefix_aligned_rmse": 0.3348516387631629,
+      "last_20s_error_median": 0.0619813174685947,
+      "transient_novel_accepted": 11727,
+      "transient_novel_rejected": 30867,
+      "submitted_map_points": 1289323
+    },
+    {
+      "run": "control/run03",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms3/transient_novel_ab/control/run03/runtime.csv",
+      "sha256": "353e5d928bfa3137cc74c38ef69bac31af69f383239b16caf1f21a6c0c53eac6",
+      "frames": 3631,
+      "common_gt_samples": 1421,
+      "prefix_samples": 442,
+      "prefix_alignment_singular_values": [
+        60115.6087613637,
+        3416.8578369879783,
+        5.742597427115684
+      ],
+      "prefix_aligned_rmse": 0.5493165458369653,
+      "last_20s_error_median": 0.02676348716140526,
+      "transient_novel_accepted": 15718,
+      "transient_novel_rejected": 37945,
+      "submitted_map_points": 1280380
+    },
+    {
+      "run": "control_off/run01",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms3/transient_novel_ab/control_off/run01/runtime.csv",
+      "sha256": "0025599606fad179713416fdd0cf69eea02d777760c28479fb37b1d6d9ed364f",
+      "frames": 3580,
+      "common_gt_samples": 1421,
+      "prefix_samples": 442,
+      "prefix_alignment_singular_values": [
+        60114.89273419098,
+        3420.0008415559737,
+        6.190869087386277
+      ],
+      "prefix_aligned_rmse": 0.41046752304186257,
+      "last_20s_error_median": 0.02240358472969207,
+      "transient_novel_accepted": 26776,
+      "transient_novel_rejected": 0,
+      "submitted_map_points": 1301750
+    },
+    {
+      "run": "control_off/run02",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms3/transient_novel_ab/control_off/run02/runtime.csv",
+      "sha256": "b6d1eeffc5c2d48debcc871da560caca70575e80d8aa115289a4ca142c26cb74",
+      "frames": 3593,
+      "common_gt_samples": 1421,
+      "prefix_samples": 442,
+      "prefix_alignment_singular_values": [
+        60101.76081723012,
+        3415.0125116407294,
+        6.0888919369651395
+      ],
+      "prefix_aligned_rmse": 1.4589635649876587,
+      "last_20s_error_median": 2.5644192772772314,
+      "transient_novel_accepted": 38982,
+      "transient_novel_rejected": 0,
+      "submitted_map_points": 1399790
+    },
+    {
+      "run": "control_off/run03",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms3/transient_novel_ab/control_off/run03/runtime.csv",
+      "sha256": "7fbfcf4a988d32644c57e101a97af87e5a0a11b4de02bc8b374ad9a951f70a2c",
+      "frames": 3599,
+      "common_gt_samples": 1421,
+      "prefix_samples": 442,
+      "prefix_alignment_singular_values": [
+        60172.58372206513,
+        3428.474234905253,
+        6.154922077577817
+      ],
+      "prefix_aligned_rmse": 0.3823104324345924,
+      "last_20s_error_median": 0.02415698973559874,
+      "transient_novel_accepted": 29462,
+      "transient_novel_rejected": 0,
+      "submitted_map_points": 1296772
+    }
+  ]
+}

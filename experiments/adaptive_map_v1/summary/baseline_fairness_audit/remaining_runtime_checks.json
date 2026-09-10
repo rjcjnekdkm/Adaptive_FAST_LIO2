@@ -1,0 +1,120 @@
+{
+  "dependency_files": 14,
+  "identical_dependency_files": 14,
+  "imu_topic_metadata": {
+    "id": 2,
+    "name": "/imu/imu",
+    "type": "sensor_msgs/msg/Imu",
+    "serialization_format": "cdr",
+    "offered_qos_profiles": "[]",
+    "type_description_hash": "RIHS01_7d9a00ff131080897a5ec7e26e315954b8eae3353c3f995c55faf71574000b5b"
+  },
+  "raw_imu_samples": 148360,
+  "raw_imu_nonpositive_intervals": 0,
+  "raw_imu_gaps_over_200ms": 0,
+  "raw_imu_max_gap_s": 0.023095369338989258,
+  "runs": [
+    {
+      "group": "max",
+      "run": "run01",
+      "rows": 3706,
+      "min_logged_map_size": 2879,
+      "local_map_move_lines": 0,
+      "loopback_lines": [],
+      "map_init_lines": [
+        "[adaptive_fastlio_mapping-1] [MapInit] initialized. points=2483, map_size=2483, center=-0.05     0 0.055"
+      ],
+      "empty_imu_rows": 0,
+      "rows_raw_imu_count_matches": 3706,
+      "rows_raw_imu_count_differs": 0,
+      "max_abs_imu_count_difference": 0,
+      "max_end_extrapolation_s": 0.0113983154296875,
+      "max_csv_interval_s": 0.30025625228881836
+    },
+    {
+      "group": "max",
+      "run": "run02",
+      "rows": 3666,
+      "min_logged_map_size": 2879,
+      "local_map_move_lines": 0,
+      "loopback_lines": [],
+      "map_init_lines": [
+        "[adaptive_fastlio_mapping-1] [MapInit] initialized. points=2483, map_size=2483, center=-0.05     0 0.055"
+      ],
+      "empty_imu_rows": 0,
+      "rows_raw_imu_count_matches": 3666,
+      "rows_raw_imu_count_differs": 0,
+      "max_abs_imu_count_difference": 0,
+      "max_end_extrapolation_s": 0.0113983154296875,
+      "max_csv_interval_s": 0.3993713855743408
+    },
+    {
+      "group": "max",
+      "run": "run03",
+      "rows": 3652,
+      "min_logged_map_size": 2879,
+      "local_map_move_lines": 0,
+      "loopback_lines": [],
+      "map_init_lines": [
+        "[adaptive_fastlio_mapping-1] [MapInit] initialized. points=2483, map_size=2483, center=-0.05     0 0.055"
+      ],
+      "empty_imu_rows": 0,
+      "rows_raw_imu_count_matches": 3652,
+      "rows_raw_imu_count_differs": 0,
+      "max_abs_imu_count_difference": 0,
+      "max_end_extrapolation_s": 0.0113983154296875,
+      "max_csv_interval_s": 0.4002361297607422
+    },
+    {
+      "group": "last",
+      "run": "run01",
+      "rows": 3705,
+      "min_logged_map_size": 2880,
+      "local_map_move_lines": 0,
+      "loopback_lines": [],
+      "map_init_lines": [
+        "[adaptive_fastlio_mapping-1] [MapInit] initialized. points=2483, map_size=2483, center=-0.05     0 0.055"
+      ],
+      "empty_imu_rows": 0,
+      "rows_raw_imu_count_matches": 3705,
+      "rows_raw_imu_count_differs": 0,
+      "max_abs_imu_count_difference": 0,
+      "max_end_extrapolation_s": 0.01080012321472168,
+      "max_csv_interval_s": 0.3003065586090088
+    },
+    {
+      "group": "last",
+      "run": "run02",
+      "rows": 3695,
+      "min_logged_map_size": 2880,
+      "local_map_move_lines": 0,
+      "loopback_lines": [],
+      "map_init_lines": [
+        "[adaptive_fastlio_mapping-1] [MapInit] initialized. points=2483, map_size=2483, center=-0.05     0 0.055"
+      ],
+      "empty_imu_rows": 0,
+      "rows_raw_imu_count_matches": 3695,
+      "rows_raw_imu_count_differs": 0,
+      "max_abs_imu_count_difference": 0,
+      "max_end_extrapolation_s": 0.01080012321472168,
+      "max_csv_interval_s": 0.3072848320007324
+    },
+    {
+      "group": "last",
+      "run": "run03",
+      "rows": 3736,
+      "min_logged_map_size": 2880,
+      "local_map_move_lines": 0,
+      "loopback_lines": [],
+      "map_init_lines": [
+        "[adaptive_fastlio_mapping-1] [MapInit] initialized. points=2483, map_size=2483, center=-0.05     0 0.055"
+      ],
+      "empty_imu_rows": 0,
+      "rows_raw_imu_count_matches": 3736,
+      "rows_raw_imu_count_differs": 0,
+      "max_abs_imu_count_difference": 0,
+      "max_end_extrapolation_s": 0.01080012321472168,
+      "max_csv_interval_s": 0.3001134395599365
+    }
+  ]
+}

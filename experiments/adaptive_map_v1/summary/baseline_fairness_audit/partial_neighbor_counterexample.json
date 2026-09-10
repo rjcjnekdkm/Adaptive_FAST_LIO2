@@ -1,0 +1,27 @@
+[
+  {
+    "neighbors": 1,
+    "baseline_accept": true,
+    "ours_accept": false
+  },
+  {
+    "neighbors": 2,
+    "baseline_accept": true,
+    "ours_accept": false
+  },
+  {
+    "neighbors": 3,
+    "baseline_accept": true,
+    "ours_accept": false
+  },
+  {
+    "neighbors": 4,
+    "baseline_accept": true,
+    "ours_accept": false
+  },
+  {
+    "neighbors": 5,
+    "baseline_accept": false,
+    "ours_accept": false
+  }
+]

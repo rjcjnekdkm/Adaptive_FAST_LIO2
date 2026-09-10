@@ -1,0 +1,10 @@
+{
+  "run02": {
+    "prefix_alignment_samples": 546,
+    "common_samples": 2673
+  },
+  "run03": {
+    "prefix_alignment_samples": 546,
+    "common_samples": 2673
+  }
+}

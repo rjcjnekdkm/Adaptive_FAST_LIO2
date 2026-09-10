@@ -1,0 +1,7 @@
+directory,run,ate_rmse_m,interpretation,evaluation
+control,run01,0.33245081156880824,quota_limited,evaluation_v1
+control,run02,5.087780743707351,quota_limited_user_confirmed_replacement,evaluation_v1
+control,run03,18.410078799181335,quota_limited,evaluation_v1
+control_off,run01,2.1257905388322538,quota_bypassed,evaluation_v1
+control_off,run02,5.665711844449117,historical_score_raw_csv_overwritten,evaluation_v1
+control_off,run03,0.5448689059187098,quota_bypassed,evaluation_v1

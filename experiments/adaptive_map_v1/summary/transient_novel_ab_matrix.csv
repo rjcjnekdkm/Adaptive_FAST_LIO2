@@ -1,0 +1,11 @@
+sequence,group,scored_records,raw_available,unique_raw_hashes,mean_ate_m,sample_std_m,transient_novel_rejected,transient_max_novel_accepted,missing_runs
+ntu_spms1,control,3,3,3,7.9434367848191645,9.371031799299463,1192350,50,
+ntu_spms1,control_off,3,2,2,1.3353297223754819,1.1178804071576767,0,1333,run02
+ntu_spms3,control,3,3,3,0.3502172951437123,0.10431523914395249,103469,50,
+ntu_spms3,control_off,3,3,3,0.5936186165607301,0.43457372005421163,0,874,
+geode_tunnel2,control,3,3,1,1.382934,0.0,0,23,
+geode_tunnel2,control_off,3,3,1,1.382934,0.0,0,23,
+geode_tunnel5,control,3,3,2,0.447549,0.0,0,20,
+geode_tunnel5,control_off,3,3,1,0.447549,0.0,0,20,
+subt_hawkins,control,1,1,1,1.405533,,0,8,run02;run03
+subt_hawkins,control_off,3,3,3,1.434498,0.020624879223888764,0,9,

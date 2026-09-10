@@ -1,0 +1,3 @@
+﻿sequence,method,n,mean_ate_m,sample_std_ate_m,min_ate_m,max_ate_m,unique_csv_hashes
+ntu_spms1,ours_no_adaptive,3,4.62308922304609,0.3852486314501366,4.192111885212328,4.93402635313179,3
+ntu_spms1,ours_adaptive,3,5.169593966980368,3.7921648909845533,1.610274233913141,9.158087652243804,3

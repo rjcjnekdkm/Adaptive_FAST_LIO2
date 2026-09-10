@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Plot stage-1 degeneracy diagnostics from an adaptive runtime CSV.
-
-The script is deliberately read-only.  It visualizes the new voxel-normal
-localizability metrics and posterior pose covariance without assigning any
-decision threshold; thresholds should be calibrated only after comparing
-multiple normal and degenerate sequences.
-"""
+"""Plot Adaptive Map localizability and map-update diagnostics."""
 
 import argparse
 import csv
@@ -86,6 +80,12 @@ def float_column(rows, name):
     return values
 
 
+def optional_float_column(rows, name, default=math.nan):
+    if not rows or name not in rows[0]:
+        return [default] * len(rows)
+    return float_column(rows, name)
+
+
 def trailing_median(values, window):
     window = max(1, window)
     result = []
@@ -148,6 +148,8 @@ def main():
     effective_ratio = float_column(rows, "effective_ratio")
     residual_mean = float_column(rows, "residual_mean")
     insert_ratio = float_column(rows, "insert_ratio")
+    f0_ratio = optional_float_column(rows, "localizability_f0_ratio")
+    lambda0_ratio = optional_float_column(rows, "localizability_lambda0_ratio")
 
     median_window = max(1, args.median_window)
     f0_median = trailing_median(f0, median_window)
@@ -175,11 +177,15 @@ def main():
 
     axes[1].plot(times, lambda0, color="#b279a2", alpha=0.35, linewidth=0.8, label="lambda0 raw")
     axes[1].plot(times, lambda0_median, color="#7b2c70", linewidth=1.6, label=f"lambda0 median ({median_window})")
+    if any(math.isfinite(value) for value in f0_ratio):
+        ratio_axis = axes[1].twinx()
+        ratio_axis.plot(times, f0_ratio, color="#4c78a8", alpha=0.8, linewidth=1.0, label="f0/reference")
+        ratio_axis.plot(times, lambda0_ratio, color="#e15759", alpha=0.8, linewidth=1.0, label="lambda0/reference")
+        ratio_axis.axhline(0.65, color="#555555", linestyle="--", linewidth=0.8, label="default drop threshold")
+        ratio_axis.set_ylabel("relative localizability")
+        ratio_axis.legend(loc="upper right")
     axes[1].set_ylabel("weak-axis mass / voxel")
     axes[1].legend(loc="upper left")
-    voxel_axis = axes[1].twinx()
-    voxel_axis.plot(times, observed_voxels, color="#9c755f", alpha=0.4, linewidth=0.8, label="observed voxels")
-    voxel_axis.set_ylabel("observed voxels")
 
     axes[2].semilogy(times, [max(value, 1e-18) for value in translation_cov], color="#e15759", label="translation max covariance (m²)")
     axes[2].semilogy(times, [max(value, 1e-18) for value in rotation_cov], color="#76b7b2", label="rotation max covariance (rad²)")
@@ -195,8 +201,8 @@ def main():
     frontend_axis.legend(loc="upper right")
 
     figure.suptitle(
-        "Stage-1 degeneracy diagnostics\n"
-        "yellow=Transient, red=Persistent (existing state machine; new metrics are diagnostic only)"
+        "Adaptive Map degeneracy diagnostics\n"
+        "yellow=Transient, red=Persistent"
     )
     figure.tight_layout(rect=(0, 0, 1, 0.96))
     figure.savefig(output, dpi=180)
@@ -211,6 +217,8 @@ def main():
         "mode_counts": mode_counts,
         "localizability_f0": finite_summary(f0),
         "localizability_lambda0": finite_summary(lambda0),
+        "localizability_f0_ratio": finite_summary(f0_ratio),
+        "localizability_lambda0_ratio": finite_summary(lambda0_ratio),
         "localizability_observed_voxels": finite_summary(observed_voxels),
         "translation_cov_eigen_max": finite_summary(translation_cov),
         "rotation_cov_eigen_max": finite_summary(rotation_cov),

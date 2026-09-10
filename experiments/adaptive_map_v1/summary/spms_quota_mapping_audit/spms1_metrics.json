@@ -1,0 +1,128 @@
+{
+  "missing_raw": [
+    "control_off/run02"
+  ],
+  "gt_sha256": "e4784e137a34f63c3d9f9cd7ca2a929b6dd21e55ed131c9b5d44afd583930886",
+  "common_gt_gaps_over_1s": [
+    {
+      "start": 121.59768986701965,
+      "end": 122.59772896766663
+    },
+    {
+      "start": 218.29600405693054,
+      "end": 219.7960512638092
+    },
+    {
+      "start": 223.195965051651,
+      "end": 230.39535427093506
+    },
+    {
+      "start": 245.79559636116028,
+      "end": 302.6945974826813
+    },
+    {
+      "start": 335.994033575058,
+      "end": 337.09408807754517
+    },
+    {
+      "start": 355.3937044143677,
+      "end": 378.39335918426514
+    },
+    {
+      "start": 378.39335918426514,
+      "end": 379.3933701515198
+    }
+  ],
+  "runs": [
+    {
+      "run": "control/run01",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms1/transient_novel_ab/control/run01/runtime.csv",
+      "sha256": "d1bf09d46c9e8ee35ef77d93ec08b9826a89e99f9f0cae94c3ce79c1dadcc395",
+      "frames": 3800,
+      "common_gt_samples": 2107,
+      "prefix_samples": 504,
+      "prefix_alignment_singular_values": [
+        80312.24953773842,
+        6975.58143759261,
+        24.20153662170125
+      ],
+      "prefix_aligned_rmse": 0.3497941644319892,
+      "last_20s_error_median": 0.11725027986857167,
+      "transient_novel_accepted": 12055,
+      "transient_novel_rejected": 44471,
+      "submitted_map_points": 1310599
+    },
+    {
+      "run": "control/run02",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms1/transient_novel_ab/control/run02/runtime.csv",
+      "sha256": "95c13c1fbcae6a74f26ce494155eba30a2372c82cf69eda334107e45ec2a4ccd",
+      "frames": 3773,
+      "common_gt_samples": 2107,
+      "prefix_samples": 504,
+      "prefix_alignment_singular_values": [
+        80325.63553622444,
+        7026.652387284754,
+        24.132454204627415
+      ],
+      "prefix_aligned_rmse": 5.743126571435278,
+      "last_20s_error_median": 17.870931485899188,
+      "transient_novel_accepted": 33119,
+      "transient_novel_rejected": 454533,
+      "submitted_map_points": 1471660
+    },
+    {
+      "run": "control/run03",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms1/transient_novel_ab/control/run03/runtime.csv",
+      "sha256": "49f464d30bd33b11d193235220c8e50c16b242d2df3777b844a8e46a775a469f",
+      "frames": 3815,
+      "common_gt_samples": 2107,
+      "prefix_samples": 504,
+      "prefix_alignment_singular_values": [
+        80410.57331612593,
+        7044.091278869151,
+        24.22319151410388
+      ],
+      "prefix_aligned_rmse": 19.995824519615333,
+      "last_20s_error_median": 70.75518336516959,
+      "transient_novel_accepted": 33865,
+      "transient_novel_rejected": 693346,
+      "submitted_map_points": 1291163
+    },
+    {
+      "run": "control_off/run01",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms1/transient_novel_ab/control_off/run01/runtime.csv",
+      "sha256": "52a69bb022a19d4b03d6f97588be5b3af1170026dbb0750f7b75d6624017610d",
+      "frames": 3805,
+      "common_gt_samples": 2107,
+      "prefix_samples": 504,
+      "prefix_alignment_singular_values": [
+        80062.27391361786,
+        7149.331901935543,
+        24.18226687276889
+      ],
+      "prefix_aligned_rmse": 2.0214477568143754,
+      "last_20s_error_median": 6.912008402635367,
+      "transient_novel_accepted": 52830,
+      "transient_novel_rejected": 0,
+      "submitted_map_points": 1366353
+    },
+    {
+      "run": "control_off/run03",
+      "source": "experiments/adaptive_map_v1/validation/ntu_spms1/transient_novel_ab/control_off/run03/runtime.csv",
+      "sha256": "3e7497dea6b8bed5d8843c1b77e6bfda9a011f7117530821cfe321a64872e156",
+      "frames": 3876,
+      "common_gt_samples": 2107,
+      "prefix_samples": 504,
+      "prefix_alignment_singular_values": [
+        80136.19826438048,
+        7145.922940913239,
+        24.118504809029968
+      ],
+      "prefix_aligned_rmse": 0.5582740473226342,
+      "last_20s_error_median": 1.663634830664967,
+      "transient_novel_accepted": 29274,
+      "transient_novel_rejected": 0,
+      "submitted_map_points": 1310569
+    }
+  ]
+}

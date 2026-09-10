@@ -44,6 +44,8 @@ def generate_launch_description():
     frontend_runtime_csv_path = LaunchConfiguration("frontend_runtime_csv_path")
     adaptive_map_enable = LaunchConfiguration("adaptive_map_enable")
     adaptive_window_enable = LaunchConfiguration("adaptive_window_enable")
+    transient_novel_quota_enable = LaunchConfiguration("transient_novel_quota_enable")
+    scan_end_use_last_point = LaunchConfiguration("scan_end_use_last_point")
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
@@ -246,6 +248,17 @@ def generate_launch_description():
         description="Enable sliding-window persistent-degeneracy state machine"
     )
 
+    declare_transient_novel_quota_enable_cmd = DeclareLaunchArgument(
+        "transient_novel_quota_enable",
+        default_value="false",
+        description="True keeps the Transient novel-point quota; false bypasses only this quota"
+    )
+
+    declare_scan_end_use_last_point_cmd = DeclareLaunchArgument(
+        "scan_end_use_last_point", default_value="false",
+        description="Use last-point time instead of maximum point time for a controlled scan-end ablation"
+    )
+
     adaptive_lio_node = Node(
         package="adaptive_fast_lio2",
         executable="adaptive_fastlio_mapping",
@@ -255,7 +268,9 @@ def generate_launch_description():
             {"use_sim_time": use_sim_time},
             {"runtime_log.csv_path": frontend_runtime_csv_path},
             {"adaptive_map.enable": adaptive_map_enable},
-            {"adaptive_window.enable": adaptive_window_enable}
+            {"adaptive_window.enable": adaptive_window_enable},
+            {"adaptive_map.transient_novel_quota_enable": transient_novel_quota_enable},
+            {"mapping.scan_end_use_last_point": scan_end_use_last_point}
         ],
         output="screen"
     )
@@ -328,6 +343,8 @@ def generate_launch_description():
     ld.add_action(declare_frontend_runtime_csv_path_cmd)
     ld.add_action(declare_adaptive_map_enable_cmd)
     ld.add_action(declare_adaptive_window_enable_cmd)
+    ld.add_action(declare_transient_novel_quota_enable_cmd)
+    ld.add_action(declare_scan_end_use_last_point_cmd)
 
     ld.add_action(adaptive_lio_node)
     ld.add_action(adaptive_backend_node)

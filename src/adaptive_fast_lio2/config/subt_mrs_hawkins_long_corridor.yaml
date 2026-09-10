@@ -29,7 +29,7 @@ adaptive_fastlio_mapping:
       acc_cov: 0.1
       b_gyr_cov: 0.0001
       b_acc_cov: 0.0001
-      imu_init_num: 400
+      imu_init_num: 200
       filter_size_surf: 0.5
       filter_size_map: 0.5
 
@@ -71,6 +71,9 @@ adaptive_fastlio_mapping:
       normal_bin_angle_deg: 15.0            # 法向方向分箱角度，退化帧中用于限制重复方向点入图。
       max_points_per_normal_bin: 30         # 退化帧内每个法向方向分箱最多允许写入地图的点数。
       max_novel_points_per_frame: 50        # 退化帧内地图未知区域 novel points 的帧级入图上限。
+      # 候选方案默认取消 Transient 的 novel 点数上限；设为 true 可恢复原50点对照。
+      # Persistent 仍使用下方的收紧配额，其他质量/方向筛选不变。
+      transient_novel_quota_enable: false
 
     adaptive_window:
       enable: true                          # 是否启用动态滑动窗口退化判断；关闭后只保留单帧静态退化判断。

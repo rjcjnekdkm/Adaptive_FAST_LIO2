@@ -1,0 +1,12 @@
+{
+  "run02": {
+    "prefix_alignment_samples": 546,
+    "common_samples": 2673,
+    "source_sha256": "95c13c1fbcae6a74f26ce494155eba30a2372c82cf69eda334107e45ec2a4ccd"
+  },
+  "run03": {
+    "prefix_alignment_samples": 546,
+    "common_samples": 2673,
+    "source_sha256": "3e7497dea6b8bed5d8843c1b77e6bfda9a011f7117530821cfe321a64872e156"
+  }
+}

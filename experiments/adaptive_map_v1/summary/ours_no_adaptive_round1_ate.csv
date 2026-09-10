@@ -1,0 +1,15 @@
+sequence,ate_rmse_m,rows,max_gap_s,protocol,path
+geode_offroad1,0.077155,4028,0.10534286499023438,GEODE original local conversion + rmse.py,experiments/adaptive_map_v1/validation/geode_offroad1/ours_no_adaptive/run01/evaluation_v1
+geode_offroad2,0.102416,4194,0.10570216178894043,GEODE original local conversion + rmse.py,experiments/adaptive_map_v1/validation/geode_offroad2/ours_no_adaptive/run01/evaluation_v1
+geode_offroad3,0.087325,3202,0.10847210884094238,GEODE original local conversion + rmse.py,experiments/adaptive_map_v1/validation/geode_offroad3/ours_no_adaptive/run01/evaluation_v1
+geode_tunnel1,0.372604,2064,0.3806130886077881,GEODE original local conversion + rmse.py,experiments/adaptive_map_v1/validation/geode_tunnel1/ours_no_adaptive/run01/evaluation_v1
+geode_tunnel2,38.004938,2575,1.0998361110687256,GEODE original local conversion + rmse.py,experiments/adaptive_map_v1/validation/geode_tunnel2/ours_no_adaptive/run01/evaluation_v1
+geode_tunnel3,9.624905,2506,0.6574304103851318,GEODE original local conversion + rmse.py,experiments/adaptive_map_v1/validation/geode_tunnel3/ours_no_adaptive/run01/evaluation_v1
+geode_tunnel4,0.129225,2218,0.10486292839050293,GEODE original local conversion + rmse.py,experiments/adaptive_map_v1/validation/geode_tunnel4/ours_no_adaptive/run01/evaluation_v1
+geode_tunnel5,6.931448,2290,0.41713905334472656,GEODE original local conversion + rmse.py,experiments/adaptive_map_v1/validation/geode_tunnel5/ours_no_adaptive/run01/evaluation_v1
+geode_waterway_short,0.248172,4733,0.1213676929473877,GEODE original local conversion + rmse.py,experiments/adaptive_map_v1/validation/geode_waterway_short/ours_no_adaptive/run01/evaluation_v1
+geode_waterway_medium,0.739867,8360,0.12134075164794922,GEODE original local conversion + rmse.py,experiments/adaptive_map_v1/validation/geode_waterway_medium/ours_no_adaptive/run01/evaluation_v1
+ntu_spms1,5.610317185732062,3617,0.7002205848693848,Local Python implementation of NTU VIRAL protocol; not official MATLAB execution,experiments/adaptive_map_v1/validation/ntu_spms1/ours_no_adaptive/run01/evaluation_v1
+ntu_spms2,4.142780921501424,3523,0.30025482177734375,Local Python implementation of NTU VIRAL protocol; not official MATLAB execution,experiments/adaptive_map_v1/validation/ntu_spms2/ours_no_adaptive/run01/evaluation_v1
+ntu_spms3,1.4233217987022322,3611,0.5000090599060059,Local Python implementation of NTU VIRAL protocol; not official MATLAB execution,experiments/adaptive_map_v1/validation/ntu_spms3/ours_no_adaptive/run01/evaluation_v1
+subt_hawkins,1.530303,2540,0.403439998626709,"SubT evo SE(3) alignment, max_diff=0.1s, offset=0",experiments/adaptive_map_v1/validation/subt_hawkins/ours_no_adaptive/run01/evaluation_v1

@@ -1,0 +1,6 @@
+sequence,run,preprocess_blind_m,adaptive_min_range_m,ate_rmse_m,rows,max_csv_gap_s,evaluation_path
+geode_tunnel1,run02,2,2,0.370164,2067,0.1006624698638916,experiments/adaptive_map_v1/validation/geode_tunnel1/ours_adaptive_blind2/run02/evaluation_v1
+geode_tunnel2,run02,2,2,1.382934,2574,0.5998601913452148,experiments/adaptive_map_v1/validation/geode_tunnel2/ours_adaptive_blind2/run02/evaluation_v1
+geode_tunnel3,run02,2,2,0.150348,2504,1.7994763851165771,experiments/adaptive_map_v1/validation/geode_tunnel3/ours_adaptive_blind2/run02/evaluation_v1
+geode_tunnel4,run02,2,2,0.131181,2218,0.10289812088012695,experiments/adaptive_map_v1/validation/geode_tunnel4/ours_adaptive_blind2/run02/evaluation_v1
+geode_tunnel5,run02,2,2,0.447549,2299,0.10528683662414551,experiments/adaptive_map_v1/validation/geode_tunnel5/ours_adaptive_blind2/run02/evaluation_v1

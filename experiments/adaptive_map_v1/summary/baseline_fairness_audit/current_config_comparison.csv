@@ -1,0 +1,67 @@
+scene,baseline_file,ours_file,baseline_key,ours_key,baseline_value,ours_value,equal
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,common.lid_topic,common.lid_topic,"""/livox/lidar""","""/livox/lidar""",True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,common.imu_topic,common.imu_topic,"""/imu/data""","""/imu/data""",True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,common.time_sync_en,common.time_sync_en,false,false,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,common.time_offset_lidar_to_imu,common.time_offset_lidar_to_imu,0.0,0.0,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,preprocess.blind,preprocess.blind,2.0,2.0,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,preprocess.lidar_type,preprocess.lidar_type,1,1,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,preprocess.scan_line,preprocess.scan_line,6,6,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,preprocess.timestamp_unit,preprocess.timestamp_unit,"""not_set""",2,False
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,point_filter_num,point_filter_num,3,3,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,feature_extract_enable,feature_extract_enable,false,false,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,mapping.acc_cov,mapping.acc_cov,0.1,0.1,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,mapping.gyr_cov,mapping.gyr_cov,0.1,0.1,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,mapping.b_acc_cov,mapping.b_acc_cov,0.0001,0.0001,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,mapping.b_gyr_cov,mapping.b_gyr_cov,0.0001,0.0001,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,mapping.extrinsic_T,mapping.extrinsic_T,"[0.049258, -0.0125, 0.026946]","[0.049258, -0.0125, 0.026946]",True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,mapping.extrinsic_R,mapping.extrinsic_R,"[0.99962, 0.027463, 0.002445, -0.027517, 0.999299, 0.025398, -0.001746, -0.025456, 0.999674]","[0.99962, 0.027463, 0.002445, -0.027517, 0.999299, 0.025398, -0.001746, -0.025456, 0.999674]",True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,mapping.extrinsic_est_en,mapping.extrinsic_est_en,false,false,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,mapping.det_range,mapping.det_range,200.0,200.0,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,filter_size_surf,mapping.filter_size_surf,0.5,0.5,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,filter_size_map,mapping.filter_size_map,0.5,0.5,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,max_iteration,mapping.scan_match_max_iteration,3,3,True
+GEODE_blind2,geode_gamma_source_check_baseline.yaml,geode_gamma_blind2.yaml,cube_side_length,mapping.cube_len,1000.0,1000.0,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,common.lid_topic,common.lid_topic,"""/os1_cloud_node1/points""","""/os1_cloud_node1/points""",True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,common.imu_topic,common.imu_topic,"""/imu/imu""","""/imu/imu""",True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,common.time_sync_en,common.time_sync_en,false,false,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,common.time_offset_lidar_to_imu,common.time_offset_lidar_to_imu,0.0,0.0,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,preprocess.blind,preprocess.blind,1.0,1.0,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,preprocess.lidar_type,preprocess.lidar_type,3,3,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,preprocess.scan_line,preprocess.scan_line,16,16,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,preprocess.timestamp_unit,preprocess.timestamp_unit,3,3,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,point_filter_num,point_filter_num,3,3,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,feature_extract_enable,feature_extract_enable,false,false,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,mapping.acc_cov,mapping.acc_cov,0.1,0.1,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,mapping.gyr_cov,mapping.gyr_cov,0.1,0.1,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,mapping.b_acc_cov,mapping.b_acc_cov,0.0001,0.0001,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,mapping.b_gyr_cov,mapping.b_gyr_cov,0.0001,0.0001,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,mapping.extrinsic_T,mapping.extrinsic_T,"[-0.05, 0.0, 0.055]","[-0.05, 0.0, 0.055]",True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,mapping.extrinsic_R,mapping.extrinsic_R,"[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]","[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]",True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,mapping.extrinsic_est_en,mapping.extrinsic_est_en,false,false,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,mapping.det_range,mapping.det_range,150.0,150.0,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,filter_size_surf,mapping.filter_size_surf,0.5,0.5,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,filter_size_map,mapping.filter_size_map,0.5,0.5,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,max_iteration,mapping.scan_match_max_iteration,3,3,True
+NTU,ntu_spms_baseline.yaml,ntu_spms.yaml,cube_side_length,mapping.cube_len,1000.0,1000.0,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,common.lid_topic,common.lid_topic,"""/velodyne_points""","""/velodyne_points""",True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,common.imu_topic,common.imu_topic,"""/imu/data""","""/imu/data""",True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,common.time_sync_en,common.time_sync_en,false,false,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,common.time_offset_lidar_to_imu,common.time_offset_lidar_to_imu,0.0,0.0,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,preprocess.blind,preprocess.blind,0.5,0.5,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,preprocess.lidar_type,preprocess.lidar_type,2,2,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,preprocess.scan_line,preprocess.scan_line,16,16,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,preprocess.timestamp_unit,preprocess.timestamp_unit,0,0,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,point_filter_num,point_filter_num,1,1,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,feature_extract_enable,feature_extract_enable,false,false,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,mapping.acc_cov,mapping.acc_cov,0.1,0.1,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,mapping.gyr_cov,mapping.gyr_cov,0.1,0.1,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,mapping.b_acc_cov,mapping.b_acc_cov,0.0001,0.0001,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,mapping.b_gyr_cov,mapping.b_gyr_cov,0.0001,0.0001,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,mapping.extrinsic_T,mapping.extrinsic_T,"[0.08, 0.029, 0.03]","[0.08, 0.029, 0.03]",True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,mapping.extrinsic_R,mapping.extrinsic_R,"[0.9992129, -0.000519121, 0.004, 0.000516111, 0.999218492, -0.000939132, -0.004, 0.000802565, 0.999993652]","[0.9992129, -0.000519121, 0.004, 0.000516111, 0.999218492, -0.000939132, -0.004, 0.000802565, 0.999993652]",True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,mapping.extrinsic_est_en,mapping.extrinsic_est_en,false,false,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,mapping.det_range,mapping.det_range,100.0,100.0,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,filter_size_surf,mapping.filter_size_surf,0.5,0.5,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,filter_size_map,mapping.filter_size_map,0.5,0.5,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,max_iteration,mapping.scan_match_max_iteration,3,3,True
+SubT,subt_mrs_hawkins_long_corridor.yaml,subt_mrs_hawkins_long_corridor.yaml,cube_side_length,mapping.cube_len,1000.0,1000.0,True

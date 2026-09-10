@@ -152,6 +152,10 @@ bool lidar_pushed = false; //  当前 lidar_buffer.front() 是否已经取出来
 // 当前等待同步的 LiDAR 帧结束时间，单位：秒。
 double lidar_end_time = 0.0;
 double lidar_mean_scantime = 0.1;  //  如果当前点云没有每点时间，就用平均扫描时间估计帧结束时间
+bool scan_end_use_last_point = false;
+double scan_last_offset_s = 0.0;
+double scan_max_offset_s = 0.0;
+bool scan_end_fallback = false;
 
 int scan_num = 0; //  用来统计已经处理的 LiDAR 帧数       
 
@@ -215,6 +219,7 @@ double adaptive_normal_bin_angle_deg = 15.0;
 int adaptive_max_points_per_normal_bin = 30;
 // 退化帧中允许写入的地图未知区域点上限，防止完全阻断地图向新区域生长。
 int adaptive_max_novel_points_per_frame = 50;
+bool adaptive_transient_novel_quota_enable = false;
 
 // ===================== 滑动窗口退化判断参数 =====================
 // 是否启用滑动窗口
@@ -670,14 +675,19 @@ bool sync_packages(MeasureGroup &meas)
         // 标准 PointCloud2 的存储顺序不一定严格按点时间排列，因此不能
         // 假设最后一个点就是扫描结束点。取最大相对时间可兼容 Velodyne、
         // Ouster 与 Livox 点云，并避免低估当前帧持续时间。
-        double last_point_time = 0.0;
+        scan_last_offset_s = static_cast<double>(meas.lidar->points.back().curvature) / 1000.0;
+        scan_max_offset_s = 0.0;
         for (const auto &point : meas.lidar->points)
         {
-            last_point_time = std::max(
-                last_point_time,
+            scan_max_offset_s = std::max(
+                scan_max_offset_s,
                 static_cast<double>(point.curvature) / 1000.0);
         }
-        if(last_point_time < 0.5 * lidar_mean_scantime || last_point_time <= 0.0)
+        // Controlled ablation: only the selected point-time statistic changes.
+        // Keep initialization and the existing fallback policy identical in both arms.
+        const double last_point_time = scan_end_use_last_point ? scan_last_offset_s : scan_max_offset_s;
+        scan_end_fallback = last_point_time < 0.5 * lidar_mean_scantime || last_point_time <= 0.0;
+        if(scan_end_fallback)
         {
             lidar_end_time = meas.lidar_beg_time + lidar_mean_scantime;
         }
@@ -1276,6 +1286,16 @@ void write_runtime_log_row(
     row.frame = map_update_count;
     row.lidar_begin_time = Measures.lidar_beg_time;
     row.lidar_end_time = Measures.lidar_end_time;
+    row.scan_end_use_last_point = scan_end_use_last_point;
+    row.scan_last_offset_s = scan_last_offset_s;
+    row.scan_max_offset_s = scan_max_offset_s;
+    row.scan_end_fallback = scan_end_fallback;
+    row.sync_imu_samples = Measures.imu.size();
+    if (!Measures.imu.empty())
+    {
+        row.sync_imu_first_time = get_time_sec(Measures.imu.front()->header.stamp);
+        row.sync_imu_last_time = get_time_sec(Measures.imu.back()->header.stamp);
+    }
     row.adaptive_map = adaptive_map_enable;
     row.degenerate = frame_degenerate;
     row.degeneracy_mode = static_cast<int>(current_degeneracy_mode);
@@ -1451,7 +1471,13 @@ bool allow_map_insert_point(
                       adaptive_window_persistent_novel_quota_scale))
                 : adaptive_max_novel_points_per_frame;
 
-        if (novel_accept_num >= std::max(0, novel_limit))
+        // Only Transient may bypass the novel-point count limit.
+        // Keep quality checks, direction quotas and Persistent behavior unchanged.
+        const bool bypass_novel_quota =
+            current_degeneracy_mode == DegeneracyMode::Transient &&
+            !adaptive_transient_novel_quota_enable;
+        if (!bypass_novel_quota &&
+            novel_accept_num >= std::max(0, novel_limit))
         {
             novel_reject_num++;
             return false;
@@ -2440,6 +2466,7 @@ public:
         this->declare_parameter<double>("mapping.b_gyr_cov", 0.0001);
         this->declare_parameter<double>("mapping.b_acc_cov", 0.0001);
         this->declare_parameter<int>("mapping.imu_init_num", 200);
+        this->declare_parameter<bool>("mapping.scan_end_use_last_point", false);
         this->declare_parameter<bool>("mapping.extrinsic_est_en", false);
 
         this->declare_parameter<int>("mapping.map_init_min_points", 6);
@@ -2486,6 +2513,7 @@ public:
         this->declare_parameter<int>("adaptive_map.max_points_per_normal_bin", 30);
         // 退化帧内地图未知区域 novel points 的帧级入图上限。
         this->declare_parameter<int>("adaptive_map.max_novel_points_per_frame", 50);
+        this->declare_parameter<bool>("adaptive_map.transient_novel_quota_enable", false);
 
         // 是否启用动态滑动窗口判断；关闭时只使用单帧静态退化判断。
         this->declare_parameter<bool>("adaptive_window.enable", true);
@@ -2567,6 +2595,7 @@ public:
         this->get_parameter("adaptive_map.normal_bin_angle_deg", adaptive_normal_bin_angle_deg);
         this->get_parameter("adaptive_map.max_points_per_normal_bin", adaptive_max_points_per_normal_bin);
         this->get_parameter("adaptive_map.max_novel_points_per_frame", adaptive_max_novel_points_per_frame);
+        this->get_parameter("adaptive_map.transient_novel_quota_enable", adaptive_transient_novel_quota_enable);
 
         // ===================== idea 模块参数读取：adaptive_window =====================
         //
@@ -2618,6 +2647,7 @@ public:
         this->get_parameter("mapping.b_gyr_cov", b_gyr_cov);
         this->get_parameter("mapping.b_acc_cov", b_acc_cov);
         this->get_parameter("mapping.imu_init_num", imu_init_num);
+        this->get_parameter("mapping.scan_end_use_last_point", scan_end_use_last_point);
         this->get_parameter("mapping.extrinsic_est_en", extrinsic_est_en);
 
         this->get_parameter("mapping.map_init_min_points", map_init_min_points);
@@ -2683,6 +2713,7 @@ public:
                   << "/" << filter_size_map
                   << ", nearest=" << nearest_search_num
                   << ", imu_init_num=" << imu_init_num
+                  << ", scan_end_use_last_point=" << scan_end_use_last_point
                   << ", extrinsic_est=" << extrinsic_est_en
                   << ", local_map/delete=" << local_map_enable
                   << "/" << local_map_delete_enable
@@ -2693,6 +2724,8 @@ public:
                   << ", residual_max=" << adaptive_max_mean_residual
                   << ", normal_ratio_min=" << adaptive_min_normal_eigen_ratio
                   << ", quality_min=" << adaptive_min_quality_score
+                  << ", transient_novel_quota_enable=" << adaptive_transient_novel_quota_enable
+                  << ", max_novel_points_per_frame=" << adaptive_max_novel_points_per_frame
                   << std::endl;
         // 打印 idea 动态窗口参数：
         //   persistent_ratio 表示窗口内退化帧比例阈值；
@@ -2871,6 +2904,16 @@ private:
 
         // 4、局部地图管理
         lasermap_fov_segment();
+
+        // 与 FAST-LIO2 的基础保护一致：下采样点不足 5 个时，仅保留
+        // 已完成的 IMU 传播，不进行匹配、增量入图及后续结果发布。
+        // 这是扫描点数保护，不是 Adaptive 的有效匹配点数量门槛。
+        if (feats_down_body->size() < 5)
+        {
+            RCLCPP_WARN(this->get_logger(), "Too few downsampled points (%zu < 5), skip this scan!",
+                        feats_down_body->size());
+            return;
+        }
 
         // 5. 与官方 FAST-LIO2 一致，通过唯一的 h_share_model() 完成 IKFoM 迭代更新。
         double solve_H_time = 0.0;
