@@ -1,0 +1,74 @@
+{
+  "source_csv": "/home/romi/Adaptive_FAST_LIO2/experiments/ntu_spms/spms_02/stage1_diagnostics_v2/adaptive_runtime.csv",
+  "frames": 3585,
+  "duration_seconds": 364.59120202064514,
+  "median_window_frames": 20,
+  "mode_counts": {
+    "0": 3343,
+    "1": 242
+  },
+  "localizability_f0": {
+    "count": 3585,
+    "min": 0.071810764,
+    "p10": 0.153442935,
+    "median": 0.206777415,
+    "p90": 0.275453882,
+    "max": 0.319754796
+  },
+  "localizability_lambda0": {
+    "count": 3585,
+    "min": 0.069409141,
+    "p10": 0.117542289,
+    "median": 0.15473306,
+    "p90": 0.220204192,
+    "max": 0.267688567
+  },
+  "localizability_observed_voxels": {
+    "count": 3585,
+    "min": 548.0,
+    "p10": 1196.0,
+    "median": 1606.0,
+    "p90": 2992.0,
+    "max": 4345.0
+  },
+  "translation_cov_eigen_max": {
+    "count": 3585,
+    "min": 9.82e-07,
+    "p10": 2.975e-06,
+    "median": 8.599e-06,
+    "p90": 2.2041e-05,
+    "max": 5.478e-05
+  },
+  "rotation_cov_eigen_max": {
+    "count": 3585,
+    "min": 2e-09,
+    "p10": 7e-09,
+    "median": 1.1e-08,
+    "p90": 2e-08,
+    "max": 3.9e-08
+  },
+  "effective_ratio": {
+    "count": 3585,
+    "min": 0.142729706,
+    "p10": 0.226676385,
+    "median": 0.337101064,
+    "p90": 0.553107789,
+    "max": 0.875689436
+  },
+  "residual_mean": {
+    "count": 3585,
+    "min": 0.010910147,
+    "p10": 0.052941213,
+    "median": 0.069855357,
+    "p90": 0.125069564,
+    "max": 0.458060726
+  },
+  "insert_ratio": {
+    "count": 3585,
+    "min": 0.014693172,
+    "p10": 0.048941799,
+    "median": 0.119018405,
+    "p90": 0.249363868,
+    "max": 0.524379812
+  }
+}

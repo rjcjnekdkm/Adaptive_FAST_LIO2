@@ -1,0 +1,36 @@
+{
+  "rows": 2290,
+  "switch": [
+    "1"
+  ],
+  "start": "1706585907.972906351",
+  "end": "1706586137.772913218",
+  "received": "2319",
+  "synchronized": "2297",
+  "modes": {
+    "0": {
+      "frames": 2180,
+      "quality_rejected": 24195,
+      "invalid_quality_rejected": 0,
+      "direction_rejected": 0,
+      "novel_rejected": 0,
+      "map_added": 98763
+    },
+    "1": {
+      "frames": 110,
+      "quality_rejected": 247,
+      "invalid_quality_rejected": 890,
+      "direction_rejected": 7,
+      "novel_rejected": 25,
+      "map_added": 761
+    },
+    "2": {
+      "frames": 0,
+      "quality_rejected": 0,
+      "invalid_quality_rejected": 0,
+      "direction_rejected": 0,
+      "novel_rejected": 0,
+      "map_added": 0
+    }
+  }
+}

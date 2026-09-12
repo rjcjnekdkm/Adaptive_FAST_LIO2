@@ -26,6 +26,17 @@ void AdaptiveMapManager::reset()
     map_cloud_dirty_ = true;
 }
 
+bool AdaptiveMapManager::hasRoot() const
+{
+    return ikdtree_ != nullptr && ikdtree_->Root_Node != nullptr;
+}
+
+void AdaptiveMapManager::collectRemovedPoints()
+{
+    KD_TREE<PointType>::PointVector removed;
+    ikdtree_->acquire_removed_points(removed);
+}
+
 bool AdaptiveMapManager::empty() const
 {
     return ikdtree_ == nullptr || ikdtree_->Root_Node == nullptr || ikdtree_->validnum() <= 0;

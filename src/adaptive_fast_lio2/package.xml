@@ -6,6 +6,8 @@
 
   <maintainer email="romi@example.com">romi</maintainer>
   <license>BSD-3-Clause</license>
+  <!-- Internally ported FAST-LIO2 core: see LICENSE.FAST_LIO and BASELINE_ALIGNMENT.md. -->
+  <license>GPL-2.0-only</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

@@ -4,6 +4,34 @@
 #include <iomanip>
 #include <iostream>
 
+namespace {
+constexpr char kRuntimeCsvHeader[] =
+    "frame,lidar_begin_time,lidar_end_time,adaptive_map,degenerate,"
+    "degeneracy_mode,window_ready,"
+    "pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w,"
+    "downsampled_points,effective_points,effective_ratio,"
+    "residual_mean,residual_median,residual_mad,normal_eigen_ratio,"
+    "condition_number,"
+    "window_degenerate_ratio,window_normal_eigen_ratio_mean,"
+    "window_residual_cv,window_path_length,window_yaw_change,"
+    "window_condition_number_mean,window_recent_degenerate_streak,"
+    "map_added,point_to_add,point_no_need_downsample,insert_ratio,"
+    "quality_rejected,invalid_quality_rejected,direction_rejected,persistent_quota_rejected,"
+    "novel_accepted,novel_rejected,voxel_rejected,total_rejected,"
+    "map_size,total_map_added,total_quality_rejected,"
+    "total_direction_rejected,total_persistent_quota_rejected,total_voxel_rejected,"
+    "sync_imu_samples,sync_imu_first_time,sync_imu_last_time,frontend_core_revision,"
+    "log_sequence,map_update_skipped,map_skip_reason,window_updated,"
+    "range_near_rejected,range_far_rejected,map_min_range,map_max_range,"
+    "map_min_effective_points,runtime_schema_revision,invalid_quality_filter_enabled,"
+    "invalid_quality_low_effective_relax_enabled,invalid_quality_relax_active,"
+    "invalid_quality_relax_effective_threshold,"
+    "invalid_quality_relaxed,total_invalid_quality_relaxed,"
+    "invalid_quality_turn_guard_enabled,invalid_quality_turn_guard_active,"
+    "invalid_quality_turn_guard_yaw_threshold,invalid_quality_turn_guard_rejected,"
+    "total_invalid_quality_turn_guard_rejected";
+}
+
 AdaptiveRuntimeLogger::~AdaptiveRuntimeLogger()
 {
     // 节点正常退出或对象销毁时，确保最后一批缓冲数据写入磁盘。
@@ -46,6 +74,21 @@ void AdaptiveRuntimeLogger::configure(bool enable, const std::string &path, bool
         }
     }
 
+    // Do not append the new schema to a historical-core CSV.
+    bool needs_header = !append_;
+    if (append_)
+    {
+        std::ifstream existing(path_);
+        std::string header;
+        if (!std::getline(existing, header) || header.empty())
+            needs_header = true;
+        else if (header != kRuntimeCsvHeader)
+        {
+            std::cerr << "[CSV] legacy schema: choose a new shared-core output path." << std::endl;
+            return;
+        }
+    }
+
     // append=false 用于独立实验：覆盖旧结果并写入新表头；
     // append=true 用于继续记录同一次实验，调用者需要保证已有文件表头一致。
     const std::ios_base::openmode mode =
@@ -58,7 +101,7 @@ void AdaptiveRuntimeLogger::configure(bool enable, const std::string &path, bool
     }
 
     ready_ = true;
-    if (!append_)
+    if (needs_header)
     {
         // 覆盖模式下文件内容已清空，因此必须先写入列名。
         writeHeader();
@@ -127,13 +170,31 @@ void AdaptiveRuntimeLogger::write(const RuntimeLogRow &row)
           << row.total_direction_rejected << ","
           << row.total_persistent_quota_rejected << ","
           << row.total_voxel_rejected << ","
-          << row.scan_end_use_last_point << ","
-          << row.scan_last_offset_s << ","
-          << row.scan_max_offset_s << ","
-          << row.scan_end_fallback << ","
           << row.sync_imu_samples << ","
           << row.sync_imu_first_time << ","
-          << row.sync_imu_last_time
+          << row.sync_imu_last_time << ","
+          << row.frontend_core_revision << ","
+          << row.log_sequence << ","
+          << (row.map_update_skipped ? 1 : 0) << ","
+          << row.map_skip_reason << ","
+          << (row.window_updated ? 1 : 0) << ","
+          << row.range_near_rejected << ","
+          << row.range_far_rejected << ","
+          << row.map_min_range << ","
+          << row.map_max_range << ","
+          << row.map_min_effective_points << ","
+          << row.runtime_schema_revision << ","
+          << (row.invalid_quality_filter_enabled ? 1 : 0) << ","
+          << (row.invalid_quality_low_effective_relax_enabled ? 1 : 0) << ","
+          << (row.invalid_quality_relax_active ? 1 : 0) << ","
+          << row.invalid_quality_relax_effective_threshold << ","
+          << row.invalid_quality_relaxed << ","
+          << row.total_invalid_quality_relaxed << ","
+          << (row.invalid_quality_turn_guard_enabled ? 1 : 0) << ","
+          << (row.invalid_quality_turn_guard_active ? 1 : 0) << ","
+          << row.invalid_quality_turn_guard_yaw_threshold << ","
+          << row.invalid_quality_turn_guard_rejected << ","
+          << row.total_invalid_quality_turn_guard_rejected
           << std::endl;
 }
 
@@ -155,22 +216,5 @@ bool AdaptiveRuntimeLogger::isReady() const
 
 void AdaptiveRuntimeLogger::writeHeader()
 {
-    // 表头顺序需要与 write() 中 RuntimeLogRow 的写入顺序保持一致。
-    file_ << "frame,lidar_begin_time,lidar_end_time,adaptive_map,degenerate,"
-          << "degeneracy_mode,window_ready,"
-          << "pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w,"
-          << "downsampled_points,effective_points,effective_ratio,"
-          << "residual_mean,residual_median,residual_mad,normal_eigen_ratio,"
-          << "condition_number,"
-          << "window_degenerate_ratio,window_normal_eigen_ratio_mean,"
-          << "window_residual_cv,window_path_length,window_yaw_change,"
-          << "window_condition_number_mean,window_recent_degenerate_streak,"
-          << "map_added,point_to_add,point_no_need_downsample,insert_ratio,"
-          << "quality_rejected,invalid_quality_rejected,direction_rejected,persistent_quota_rejected,"
-          << "novel_accepted,novel_rejected,voxel_rejected,total_rejected,"
-          << "map_size,total_map_added,total_quality_rejected,"
-          << "total_direction_rejected,total_persistent_quota_rejected,total_voxel_rejected,"
-          << "scan_end_use_last_point,scan_last_offset_s,scan_max_offset_s,scan_end_fallback,"
-          << "sync_imu_samples,sync_imu_first_time,sync_imu_last_time"
-          << std::endl;
+    file_ << kRuntimeCsvHeader << std::endl;
 }

@@ -1,5 +1,7 @@
 # ATE实验矩阵（单位：m）
 
+内部基线对齐后的最新 `ours_on` / `ours_off` 结果见[本轮分析与矩阵](ours_on_off_round/analysis.md)。该轮包含 14 个场景，Tunnel5 ON 严重发散且记录不完整。下方保留的是旧目录历史矩阵，不代表当前内部基线版本。
+
 最新[基线公平性审计](baseline_fairness_audit/findings.md)：42条来源中40条原始CSV与评分哈希一致；Tunnel2、Tunnel5开启组所引`ours_adaptive_blind2/run02/runtime.csv`当前缺失，以下对应数值仅作历史评分。当前源码仍存在关闭Adaptive后保留的工程差异，主表尚不能作为已通过公平性验收的正式结论。
 
 主矩阵在2米设置下：Tunnel1～5的FAST-LIO2和关闭Adaptive使用blind2/run01，开启组使用ours_adaptive_blind2/run02（入图下限2米）；其他序列仍用同名目录run01。按用户指定更新，不择优。每格来源见CSV的source列。原目录参考表保留此前结果。

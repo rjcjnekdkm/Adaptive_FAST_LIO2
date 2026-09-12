@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/ours_off/run02/evaluation_on_off_v1_runtime1/ours_off.txt:
+--------------------------------------------------------------------------------
+Loaded 2316 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/ours_off/run02/evaluation_on_off_v1_runtime1/ours_off.txt
+Loaded 625 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/ours_off/run02/evaluation_on_off_v1_runtime1/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 623 of max. 625 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/ours_off/run02/evaluation_on_off_v1_runtime1/ours_off.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/ours_off/run02/evaluation_on_off_v1_runtime1/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.21965433 -0.97435899  0.0487498 ]
+ [ 0.97420771 -0.22171918 -0.04195167]
+ [ 0.05168475  0.03827756  0.99792961]]
+Translation of alignment:
+[ 342.23441444 -125.95816689  -32.88623339]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 623 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.916875
+      mean	0.356844
+    median	0.329360
+       min	0.025014
+      rmse	0.383837
+       sse	91.787196
+       std	0.141398
+
+
+Extracted RMSE: 0.383837
+Average RMSE: 0.383837
+ The minimum min_rmse is 0.383837
+

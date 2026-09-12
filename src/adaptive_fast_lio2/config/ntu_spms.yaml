@@ -29,7 +29,7 @@ adaptive_fastlio_mapping:
       acc_cov: 0.1
       b_gyr_cov: 0.0001
       b_acc_cov: 0.0001
-      imu_init_num: 200
+      imu_init_num: 10  # Shared FAST-LIO2 MAX_INI_COUNT; legacy values live in checkpoint 7a05c9a.
       filter_size_surf: 0.5
       filter_size_map: 0.5
 
@@ -57,7 +57,7 @@ adaptive_fastlio_mapping:
 
     adaptive_map:
       enable: true
-      min_effective_points: 200
+      min_effective_points: 300
       min_range: 1.0
       max_range: 150.0
       residual_scale: 2.0

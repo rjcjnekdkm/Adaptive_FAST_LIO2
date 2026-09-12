@@ -36,7 +36,8 @@ def evaluate(key, kind, gt, converter=None, scorer=None, method='fastlio2', run_
     output = folder / output_name
     output.mkdir(exist_ok=False)
     rows = list(csv.DictReader(source.open()))
-    time_key = 'stamp' if method.startswith('fastlio2') else 'lidar_end_time'
+    # Aligned Ours baseline uses FAST-LIO2's external recorder as well.
+    time_key = 'stamp' if 'stamp' in rows[0] else 'lidar_end_time'
     stamps = [float(r[time_key]) for r in rows]
     raw = output / 'trajectory_end.tum'
     fields = [time_key, 'pos_x', 'pos_y', 'pos_z', 'quat_x', 'quat_y', 'quat_z', 'quat_w']

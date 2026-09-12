@@ -1,0 +1,18 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/geode_offroad3/fastlio2/run01/runtime.csv",
+  "source_sha256": "e33c4e1ecd4332e862e565465969b45d0c8b00a60fba7a7a0152c4d9b34a3543",
+  "gt": "bag/GEODE/offroad/groudtruth/Offroad3.txt",
+  "gt_sha256": "dabaa600e823c7af2374377e449a8a41c7ff000e37e94836cf52d34ccbed5255",
+  "stamp": "Odometry.header.stamp; current source uses lidar_end_time",
+  "runtime_source_revision": "not captured at run time; do not infer from current HEAD",
+  "rows": 3220,
+  "duration_s": 321.8990333080292,
+  "max_gap_s": 0.10847187042236328,
+  "protocol": "GEODE original local conversion + rmse.py",
+  "converter_sha256": "258452c5439128d2a375dd7bf8b2b648b7f4550adbfb39a32b981e3604bca01e",
+  "scorer_sha256": "2b0db56c90651512bd1f9f01a1772a2390b89b71f86b676e95f5c1b2ed3e38b5",
+  "time_offset_s": 0.1,
+  "offset_applies_to": "GT (second evo input)",
+  "offset_basis": "previous user-specified protocol; not an official mandated offset",
+  "ate_rmse_m": 0.087475
+}

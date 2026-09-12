@@ -1,0 +1,1 @@
+/home/romi/Adaptive_FAST_LIO2/bag/GEODE/offroad/groudtruth/Offroad3.txt

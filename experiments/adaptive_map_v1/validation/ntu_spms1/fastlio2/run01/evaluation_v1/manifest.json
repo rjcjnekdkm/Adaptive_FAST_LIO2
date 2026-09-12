@@ -1,0 +1,15 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/ntu_spms1/fastlio2/run01/runtime.csv",
+  "source_sha256": "40746a21db721845bba890074a9ef45c36d2a321767e37d71f8ece23b55b8482",
+  "gt": "bag/NTU/spms_01/ground_truth/ground_truth.csv",
+  "gt_sha256": "e4784e137a34f63c3d9f9cd7ca2a929b6dd21e55ed131c9b5d44afd583930886",
+  "stamp": "Odometry.header.stamp; current source uses lidar_end_time",
+  "runtime_source_revision": "not captured at run time; do not infer from current HEAD",
+  "rows": 3906,
+  "duration_s": 417.6905107498169,
+  "max_gap_s": 0.4031493663787842,
+  "protocol": "Local Python implementation of NTU VIRAL protocol; not official MATLAB execution",
+  "evaluator_sha256": "0b801405594e1a4872d36ef865a3596e66a5c794d9cdd73762f402ec7d5102de",
+  "associated_samples": 2994,
+  "ate_rmse_m": 2.162181471085823
+}

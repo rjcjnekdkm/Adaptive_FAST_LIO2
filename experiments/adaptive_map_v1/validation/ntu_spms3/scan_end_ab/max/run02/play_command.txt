@@ -1,0 +1,1 @@
+ros2 bag play /home/romi/Adaptive_FAST_LIO2/bag/NTU/spms_03/spms_03_ros2 --clock --rate 1.0

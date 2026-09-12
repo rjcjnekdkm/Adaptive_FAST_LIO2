@@ -1,0 +1,190 @@
+{
+  "time_origin": 1706584908.6429248,
+  "window_relative_s": [
+    125,
+    145
+  ],
+  "scans": 200,
+  "lidar_max_header_gap_s": 0.10065221786499023,
+  "imu_samples": 2000,
+  "imu_max_header_gap_s": 0.014714956283569336,
+  "imu_nonpositive_gaps": 0,
+  "imu_acc_finite": true,
+  "imu_gyro_finite": true,
+  "acc_norm_range": [
+    3.7586824752591035,
+    19.659698891185133
+  ],
+  "gyro_norm_max_rad_s": 0.8636601020558742,
+  "125_130": {
+    "raw_points": {
+      "min": 24000,
+      "median": 24000.0,
+      "max": 24000
+    },
+    "raw_nonzero": {
+      "min": 18103,
+      "median": 20915.0,
+      "max": 22181
+    },
+    "valid_line_tag": {
+      "min": 23999,
+      "median": 23999.0,
+      "max": 23999
+    },
+    "picked": {
+      "min": 7999,
+      "median": 7999.0,
+      "max": 7999
+    },
+    "picked_near4": {
+      "min": 1979,
+      "median": 3928.0,
+      "max": 5822
+    },
+    "raw_above4": {
+      "min": 6640,
+      "median": 12472.0,
+      "max": 18368
+    },
+    "kept": {
+      "min": 2177,
+      "median": 4071.0,
+      "max": 6020
+    },
+    "kept_above1": {
+      "min": 5943,
+      "median": 6842.0,
+      "max": 7306
+    },
+    "kept_above2": {
+      "min": 5717,
+      "median": 6792.0,
+      "max": 7265
+    },
+    "duplicate_removed": {
+      "min": 0,
+      "median": 0.0,
+      "max": 0
+    },
+    "voxel_proxy": {
+      "min": 544,
+      "median": 845.0,
+      "max": 1610
+    }
+  },
+  "131_136": {
+    "raw_points": {
+      "min": 24000,
+      "median": 24000.0,
+      "max": 24000
+    },
+    "raw_nonzero": {
+      "min": 19405,
+      "median": 21499.0,
+      "max": 21819
+    },
+    "valid_line_tag": {
+      "min": 23999,
+      "median": 23999.0,
+      "max": 23999
+    },
+    "picked": {
+      "min": 7999,
+      "median": 7999.0,
+      "max": 7999
+    },
+    "picked_near4": {
+      "min": 5271,
+      "median": 7682.0,
+      "max": 7999
+    },
+    "raw_above4": {
+      "min": 0,
+      "median": 999.0,
+      "max": 8312
+    },
+    "kept": {
+      "min": 0,
+      "median": 317.0,
+      "max": 2728
+    },
+    "kept_above1": {
+      "min": 6308,
+      "median": 7076.0,
+      "max": 7216
+    },
+    "kept_above2": {
+      "min": 5099,
+      "median": 7016.0,
+      "max": 7177
+    },
+    "duplicate_removed": {
+      "min": 0,
+      "median": 0.0,
+      "max": 0
+    },
+    "voxel_proxy": {
+      "min": 0,
+      "median": 33.0,
+      "max": 418
+    }
+  },
+  "140_145": {
+    "raw_points": {
+      "min": 24000,
+      "median": 24000.0,
+      "max": 24000
+    },
+    "raw_nonzero": {
+      "min": 21410,
+      "median": 21726.5,
+      "max": 22163
+    },
+    "valid_line_tag": {
+      "min": 23999,
+      "median": 23999.0,
+      "max": 23999
+    },
+    "picked": {
+      "min": 7999,
+      "median": 7999.0,
+      "max": 7999
+    },
+    "picked_near4": {
+      "min": 2267,
+      "median": 2696.0,
+      "max": 3864
+    },
+    "raw_above4": {
+      "min": 12631,
+      "median": 16231.5,
+      "max": 17503
+    },
+    "kept": {
+      "min": 4135,
+      "median": 5303.0,
+      "max": 5732
+    },
+    "kept_above1": {
+      "min": 7026,
+      "median": 7140.5,
+      "max": 7302
+    },
+    "kept_above2": {
+      "min": 6992,
+      "median": 7109.5,
+      "max": 7261
+    },
+    "duplicate_removed": {
+      "min": 0,
+      "median": 0.0,
+      "max": 0
+    },
+    "voxel_proxy": {
+      "min": 901,
+      "median": 1456.5,
+      "max": 1591
+    }
+  }
+}

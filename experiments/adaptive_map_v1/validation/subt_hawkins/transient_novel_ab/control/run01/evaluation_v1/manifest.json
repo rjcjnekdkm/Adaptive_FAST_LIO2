@@ -1,0 +1,15 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/subt_hawkins/transient_novel_ab/control/run01/runtime.csv",
+  "source_sha256": "b97f5c5937606c77e082e7dd3b3a0027c6bd54998f1f581a7e93c473b8ea7b79",
+  "gt": "bag/SubT_MRS/ground_truth_path.csv",
+  "gt_sha256": "e4b6d79ac500d517dbb88c8933df31ca6b0bffb2fdf5e5988456be81f7280b64",
+  "stamp": "lidar_end_time; end-of-scan pose",
+  "method": "control",
+  "runtime_source_revision": "not captured at run time; do not infer from current HEAD",
+  "rows": 2535,
+  "duration_s": 277.95324897766113,
+  "max_gap_s": 0.5042390823364258,
+  "protocol": "SubT evo SE(3) alignment, max_diff=0.1s, offset=0",
+  "time_offset_s": 0,
+  "ate_rmse_m": 1.405533
+}

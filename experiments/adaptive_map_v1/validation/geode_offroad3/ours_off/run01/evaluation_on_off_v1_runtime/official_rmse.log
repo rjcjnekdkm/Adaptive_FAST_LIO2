@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad3/ours_off/run01/evaluation_on_off_v1_runtime/ours_off.txt:
+--------------------------------------------------------------------------------
+Loaded 3220 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad3/ours_off/run01/evaluation_on_off_v1_runtime/ours_off.txt
+Loaded 20351 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad3/ours_off/run01/evaluation_on_off_v1_runtime/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 2888 of max. 3220 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad3/ours_off/run01/evaluation_on_off_v1_runtime/ours_off.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad3/ours_off/run01/evaluation_on_off_v1_runtime/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[ 0.58541503  0.80920285 -0.0497994 ]
+ [-0.80796323  0.58738661  0.04660893]
+ [ 0.06696759  0.01295052  0.9976711 ]]
+Translation of alignment:
+[-2539510.55696354  -866830.38456604   -86264.12257269]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 2888 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.368334
+      mean	0.081526
+    median	0.075481
+       min	0.005910
+      rmse	0.092068
+       sse	24.480369
+       std	0.042779
+
+
+Extracted RMSE: 0.092068
+Average RMSE: 0.092068
+ The minimum min_rmse is 0.092068
+

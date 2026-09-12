@@ -35,7 +35,7 @@ adaptive_fastlio_mapping:
       acc_cov: 0.0000310706192528       # accel_std^2
       b_gyr_cov: 0.0000000118409818239 # gyro_rw^2
       b_acc_cov: 0.0000000145894311777 # accel_rw^2
-      imu_init_num: 400                 # Xsens IMU 约 100 Hz，使用约 4 s 初始化。
+      imu_init_num: 10  # Shared FAST-LIO2 MAX_INI_COUNT; legacy values live in checkpoint 7a05c9a.
       filter_size_surf: 0.5
       filter_size_map: 0.5
 

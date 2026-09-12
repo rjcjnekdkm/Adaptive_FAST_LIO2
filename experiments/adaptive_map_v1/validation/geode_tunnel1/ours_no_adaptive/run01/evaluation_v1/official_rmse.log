@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel1/ours_no_adaptive/run01/evaluation_v1/ours_no_adaptive.txt:
+--------------------------------------------------------------------------------
+Loaded 2064 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel1/ours_no_adaptive/run01/evaluation_v1/ours_no_adaptive.txt
+Loaded 435 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel1/ours_no_adaptive/run01/evaluation_v1/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 434 of max. 435 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel1/ours_no_adaptive/run01/evaluation_v1/ours_no_adaptive.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel1/ours_no_adaptive/run01/evaluation_v1/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.49273723  0.86999656  0.01777638]
+ [-0.86200532 -0.49080077  0.12673368]
+ [ 0.11898253  0.04712307  0.99177748]]
+Translation of alignment:
+[-127.03616554  184.08430929  -32.37520622]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 434 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.738735
+      mean	0.362221
+    median	0.345888
+       min	0.201705
+      rmse	0.372604
+       sse	60.253966
+       std	0.087351
+
+
+Extracted RMSE: 0.372604
+Average RMSE: 0.372604
+ The minimum min_rmse is 0.372604
+

@@ -1,0 +1,38 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel5/normal_quality_ab/off/official_end_offset_0p1/rmse/adaptive_off_end.txt:
+--------------------------------------------------------------------------------
+Loaded 2290 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel5/normal_quality_ab/off/official_end_offset_0p1/rmse/adaptive_off_end.txt
+Loaded 625 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel5/normal_quality_ab/off/official_end_offset_0p1/rmse/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 615 of max. 625 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel5/normal_quality_ab/off/official_end_offset_0p1/rmse/adaptive_off_end.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel5/normal_quality_ab/off/official_end_offset_0p1/rmse/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.22998711 -0.97254263 -0.03559159]
+ [-0.91647624  0.20413595  0.34409274]
+ [-0.32737934  0.11175574 -0.93826085]]
+Translation of alignment:
+[343.81623666 130.06668572  43.13577125]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 615 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	24.794089
+      mean	13.947434
+    median	13.108450
+       min	1.189915
+      rmse	14.861635
+       sse	135833.948825
+       std	5.131988
+
+
+Extracted RMSE: 14.861635
+Average RMSE: 14.861635
+ The minimum min_rmse is 14.861635

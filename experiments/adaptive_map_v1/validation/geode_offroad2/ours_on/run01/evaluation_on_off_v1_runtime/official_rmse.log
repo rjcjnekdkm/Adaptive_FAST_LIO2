@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad2/ours_on/run01/evaluation_on_off_v1_runtime/ours_on.txt:
+--------------------------------------------------------------------------------
+Loaded 4212 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad2/ours_on/run01/evaluation_on_off_v1_runtime/ours_on.txt
+Loaded 33490 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad2/ours_on/run01/evaluation_on_off_v1_runtime/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 4104 of max. 4212 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad2/ours_on/run01/evaluation_on_off_v1_runtime/ours_on.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad2/ours_on/run01/evaluation_on_off_v1_runtime/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[ 0.94121999  0.33698935 -0.02330476]
+ [-0.33608803  0.94115999  0.03553454]
+ [ 0.03390827 -0.02561337  0.99909668]]
+Translation of alignment:
+[-1609984.38059495 -2148109.7763436     38847.74022819]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 4104 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.438765
+      mean	0.099296
+    median	0.097270
+       min	0.006349
+      rmse	0.108194
+       sse	48.041039
+       std	0.042968
+
+
+Extracted RMSE: 0.108194
+Average RMSE: 0.108194
+ The minimum min_rmse is 0.108194
+

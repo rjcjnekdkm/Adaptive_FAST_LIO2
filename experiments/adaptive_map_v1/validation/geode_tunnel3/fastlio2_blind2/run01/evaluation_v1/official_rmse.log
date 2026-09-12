@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel3/fastlio2_blind2/run01/evaluation_v1/fastlio2_blind2.txt:
+--------------------------------------------------------------------------------
+Loaded 2537 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel3/fastlio2_blind2/run01/evaluation_v1/fastlio2_blind2.txt
+Loaded 478 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel3/fastlio2_blind2/run01/evaluation_v1/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 478 of max. 478 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel3/fastlio2_blind2/run01/evaluation_v1/fastlio2_blind2.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel3/fastlio2_blind2/run01/evaluation_v1/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-4.43101760e-01  8.96471321e-01  1.42357694e-05]
+ [-8.96124981e-01 -4.42931014e-01  2.77873301e-02]
+ [ 2.49168500e-02  1.22998579e-02  9.99613857e-01]]
+Translation of alignment:
+[-136.88042835  179.3015773   -15.98662963]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 478 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	1.561298
+      mean	0.213014
+    median	0.185045
+       min	0.014698
+      rmse	0.278646
+       sse	37.113534
+       std	0.179634
+
+
+Extracted RMSE: 0.278646
+Average RMSE: 0.278646
+ The minimum min_rmse is 0.278646
+

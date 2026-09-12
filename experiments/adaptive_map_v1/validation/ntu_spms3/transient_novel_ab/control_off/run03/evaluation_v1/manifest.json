@@ -1,0 +1,16 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/ntu_spms3/transient_novel_ab/control_off/run03/runtime.csv",
+  "source_sha256": "7fbfcf4a988d32644c57e101a97af87e5a0a11b4de02bc8b374ad9a951f70a2c",
+  "gt": "bag/NTU/spms_03/ground_truth/ground_truth.csv",
+  "gt_sha256": "242a9c6e3331aefcd2939b68226fe629448167bf3339784ca85750f8af552da5",
+  "stamp": "lidar_end_time; end-of-scan pose",
+  "method": "transient_novel_ab/control_off",
+  "runtime_source_revision": "not captured at run time; do not infer from current HEAD",
+  "rows": 3599,
+  "duration_s": 381.18984508514404,
+  "max_gap_s": 0.3006629943847656,
+  "protocol": "Local Python implementation of NTU VIRAL protocol; not official MATLAB execution",
+  "evaluator_sha256": "0b801405594e1a4872d36ef865a3596e66a5c794d9cdd73762f402ec7d5102de",
+  "associated_samples": 1864,
+  "ate_rmse_m": 0.32963414672853764
+}

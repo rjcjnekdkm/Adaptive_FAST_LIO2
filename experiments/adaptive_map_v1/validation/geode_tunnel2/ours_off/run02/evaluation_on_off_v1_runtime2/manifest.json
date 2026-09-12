@@ -1,0 +1,19 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/geode_tunnel2/ours_off/run02/runtime2.csv",
+  "source_sha256": "b2169645a6f6488f86f9569550a16296753d5337edea2355d473879217791110",
+  "gt": "bag/GEODE/Tunneling_tunnel_gamma/groudtruth/Tunneling_tunnel2.txt",
+  "gt_sha256": "b83ca5db4102838cd260fc78b0a20cca90da9db855ab9b762f9d7f2e5c856c5a",
+  "stamp": "lidar_end_time; end-of-scan pose",
+  "method": "ours_off",
+  "runtime_source_revision": "not captured at run time; do not infer from current HEAD",
+  "rows": 2610,
+  "duration_s": 260.89877367019653,
+  "max_gap_s": 0.10312485694885254,
+  "protocol": "GEODE original local conversion + rmse.py",
+  "converter_sha256": "cc8fd2ca405f2dfa662fe1e8a2b665a76c90017edfadc6f62547d1f669dc4433",
+  "scorer_sha256": "2b0db56c90651512bd1f9f01a1772a2390b89b71f86b676e95f5c1b2ed3e38b5",
+  "time_offset_s": 0.1,
+  "offset_applies_to": "GT (second evo input)",
+  "offset_basis": "previous user-specified protocol; not an official mandated offset",
+  "ate_rmse_m": 0.81579
+}

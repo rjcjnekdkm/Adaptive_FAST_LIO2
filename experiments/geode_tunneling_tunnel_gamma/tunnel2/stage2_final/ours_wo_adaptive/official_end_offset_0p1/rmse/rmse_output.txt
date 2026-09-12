@@ -1,0 +1,38 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/ours_wo_adaptive/official_end_offset_0p1/rmse/ours_wo_adaptive_end.txt:
+--------------------------------------------------------------------------------
+Loaded 2575 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/ours_wo_adaptive/official_end_offset_0p1/rmse/ours_wo_adaptive_end.txt
+Loaded 618 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/ours_wo_adaptive/official_end_offset_0p1/rmse/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 612 of max. 618 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/ours_wo_adaptive/official_end_offset_0p1/rmse/ours_wo_adaptive_end.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/ours_wo_adaptive/official_end_offset_0p1/rmse/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.4602739   0.8768238  -0.13902505]
+ [ 0.39677526  0.06308422 -0.91574547]
+ [-0.79417714 -0.47665544 -0.37693801]]
+Translation of alignment:
+[-119.3793769   -52.32696483  183.88419579]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 612 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	20.618771
+      mean	13.067848
+    median	12.681104
+       min	1.145090
+      rmse	13.351232
+       sse	109092.297741
+       std	2.736190
+
+
+Extracted RMSE: 13.351232
+Average RMSE: 13.351232
+ The minimum min_rmse is 13.351232

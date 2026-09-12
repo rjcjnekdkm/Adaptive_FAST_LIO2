@@ -1,0 +1,109 @@
+{
+  "source_csv": "/home/romi/Adaptive_FAST_LIO2/experiments/stage2/geode_tunnel2_relative_policy_v1/adaptive_runtime.csv",
+  "frames": 2488,
+  "duration_seconds": 257.2961173057556,
+  "median_window_frames": 20,
+  "mode_counts": {
+    "0": 2039,
+    "1": 426,
+    "2": 23
+  },
+  "localizability_f0": {
+    "count": 2488,
+    "min": 0.017073126,
+    "p10": 0.028076437,
+    "median": 0.0841738605,
+    "p90": 0.139113208,
+    "max": 0.179813721
+  },
+  "localizability_lambda0": {
+    "count": 2488,
+    "min": 0.014981135,
+    "p10": 0.026015084,
+    "median": 0.070596928,
+    "p90": 0.102272305,
+    "max": 0.127604483
+  },
+  "localizability_observed_voxels": {
+    "count": 2488,
+    "min": 41.0,
+    "p10": 230.0,
+    "median": 892.0,
+    "p90": 1135.0,
+    "max": 1414.0
+  },
+  "translation_cov_eigen_max": {
+    "count": 2488,
+    "min": 5.18e-06,
+    "p10": 8.157e-06,
+    "median": 1.6627000000000002e-05,
+    "p90": 5.5184e-05,
+    "max": 0.001575442
+  },
+  "rotation_cov_eigen_max": {
+    "count": 2488,
+    "min": 5.97e-07,
+    "p10": 1.082e-06,
+    "median": 2.4975000000000002e-06,
+    "p90": 5.622e-06,
+    "max": 0.000159597
+  },
+  "effective_ratio": {
+    "count": 2488,
+    "min": 0.130725191,
+    "p10": 0.19218585,
+    "median": 0.374305782,
+    "p90": 0.729181246,
+    "max": 0.815257353
+  },
+  "residual_mean": {
+    "count": 2488,
+    "min": 0.01752814,
+    "p10": 0.022750423,
+    "median": 0.0379193035,
+    "p90": 0.051550192,
+    "max": 0.102656884
+  },
+  "insert_ratio": {
+    "count": 2488,
+    "min": 0.0,
+    "p10": 0.007832898,
+    "median": 0.030267122,
+    "p90": 0.05,
+    "max": 0.585205993
+  },
+  "relative_baseline_ready_frames": 1888,
+  "relative_persistent_candidate_frames": 21,
+  "relative_f0_baseline": {
+    "count": 2488,
+    "min": 0.0,
+    "p10": 0.0,
+    "median": 0.086351447,
+    "p90": 0.137732908,
+    "max": 0.153384966
+  },
+  "relative_lambda0_baseline": {
+    "count": 2488,
+    "min": 0.0,
+    "p10": 0.0,
+    "median": 0.073403314,
+    "p90": 0.10127044,
+    "max": 0.110615544
+  },
+  "relative_f0_ratio": {
+    "count": 2488,
+    "min": 0.353479406,
+    "p10": 0.848715187,
+    "median": 1.0,
+    "p90": 1.089508373,
+    "max": 1.191703083
+  },
+  "relative_lambda0_ratio": {
+    "count": 2488,
+    "min": 0.354857755,
+    "p10": 0.869296489,
+    "median": 1.0,
+    "p90": 1.079220183,
+    "max": 1.161859583
+  }
+}

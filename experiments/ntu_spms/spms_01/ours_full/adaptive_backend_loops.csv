@@ -1,0 +1,12 @@
+time,current_id,candidate_id,scan_context_distance,icp_fitness,threshold,trans_error,yaw_error,degenerate_pair,accepted,target_points,source_points,reverse_icp_fitness,reciprocal_translation_error,reciprocal_yaw_error,observability_correspondences,observability_condition_number,observability_min_singular_value,reason
+1624180597.607953072,297,266,0.177126946,0.701101479,0.300000000,nan,nan,0,0,25040,3307,nan,nan,nan,0,nan,nan,fitness_reject
+1624180597.908033848,298,267,0.128912382,0.648169731,0.300000000,nan,nan,0,0,25398,3226,nan,nan,nan,0,nan,nan,fitness_reject
+1624180598.207929611,299,266,0.153088255,0.837687390,0.300000000,nan,nan,0,0,25040,3308,nan,nan,nan,0,nan,nan,fitness_reject
+1624180598.507968187,300,266,0.174534075,0.769364465,0.300000000,nan,nan,0,0,25040,3309,nan,nan,nan,0,nan,nan,fitness_reject
+1624180598.708065033,301,263,0.166022050,0.854417649,0.300000000,nan,nan,0,0,24844,3283,nan,nan,nan,0,nan,nan,fitness_reject
+1624180599.007696629,302,262,0.159393587,0.736212210,0.300000000,nan,nan,0,0,24817,3300,nan,nan,nan,0,nan,nan,fitness_reject
+1624180599.308064222,303,261,0.142263727,0.529006570,0.300000000,nan,nan,0,0,25138,3286,nan,nan,nan,0,nan,nan,fitness_reject
+1624180602.007927179,312,252,0.177738288,0.249921166,0.300000000,0.239434821,0.000916161,0,1,25643,3277,nan,nan,nan,0,nan,nan,accepted
+1624180807.104421854,829,797,0.175809354,0.148274430,0.300000000,0.066806381,0.001977158,0,1,43029,4386,nan,nan,nan,0,nan,nan,accepted
+1624180807.404447079,831,797,0.176866388,nan,nan,nan,nan,0,0,0,4465,nan,nan,nan,0,nan,nan,current_cooldown_reject
+1624180807.504323483,832,799,0.175128747,nan,nan,nan,nan,0,0,0,4483,nan,nan,nan,0,nan,nan,current_cooldown_reject

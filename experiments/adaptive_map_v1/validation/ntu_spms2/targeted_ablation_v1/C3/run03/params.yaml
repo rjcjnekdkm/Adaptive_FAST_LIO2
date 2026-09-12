@@ -1,0 +1,118 @@
+/adaptive_fastlio_mapping:
+  ros__parameters:
+    adaptive_map:
+      enable: true
+      invalid_quality_filter_enable: true
+      invalid_quality_low_effective_relax_enable: true
+      max_mean_residual: 0.15
+      max_novel_points_per_frame: 50
+      max_points_per_normal_bin: 30
+      max_range: 150.0
+      min_effective_points: 200
+      min_effective_ratio: 0.1
+      min_normal_eigen_ratio: 0.02
+      min_quality_score: 0.92
+      min_range: 1.0
+      normal_bin_angle_deg: 15.0
+      residual_robust_sigma: 2.5
+      residual_scale: 2.0
+      transient_novel_quota_enable: false
+    adaptive_window:
+      enable: true
+      enter_count_threshold: 3
+      exit_count_threshold: 5
+      max_yaw_change: 0.25
+      min_condition_number: 50.0
+      min_motion: 2.0
+      min_recent_degenerate_streak: 2
+      normal_ratio_scale: 1.5
+      persistent_direction_quota_scale: 0.5
+      persistent_insert_quota_max: 5
+      persistent_insert_quota_min: 2
+      persistent_insert_quota_scale: 0.3
+      persistent_novel_quota_scale: 0.5
+      persistent_ratio_threshold: 0.5
+      residual_stability_ratio: 0.5
+      size: 20
+    common:
+      imu_topic: /imu/imu
+      lid_topic: /os1_cloud_node1/points
+      time_offset_lidar_to_imu: 0.0
+      time_sync_en: false
+    feature_extract_enable: false
+    mapping:
+      acc_cov: 0.1
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
+      cube_len: 1000.0
+      det_range: 150.0
+      effective_score_threshold: 0.9
+      extrinsic_R:
+      - 1.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+      extrinsic_T:
+      - -0.05
+      - 0.0
+      - 0.055
+      extrinsic_est_en: false
+      filter_size_map: 0.5
+      filter_size_surf: 0.5
+      gyr_cov: 0.1
+      imu_init_num: 10
+      laser_point_cov: 0.001
+      local_map_delete_enable: true
+      local_map_enable: true
+      map_init_min_points: 6
+      move_threshold: 1.5
+      nearest_search_num: 5
+      nearest_sq_dist_threshold: 5.0
+      plane_residual_threshold: 0.1
+      scan_match_max_iteration: 3
+      scan_match_min_effective_points: 20
+    point_filter_num: 3
+    preprocess:
+      blind: 1.0
+      lidar_type: 3
+      scan_line: 16
+      scan_rate: 10
+      timestamp_unit: 3
+    publish:
+      dense_publish_en: true
+      map_en: true
+      scan_bodyframe_pub_en: true
+      scan_publish_en: true
+    qos_overrides:
+      /clock:
+        subscription:
+          depth: 1
+          durability: volatile
+          history: keep_last
+          reliability: best_effort
+      /parameter_events:
+        publisher:
+          depth: 1000
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+      /tf:
+        publisher:
+          depth: 100
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+    runtime_log:
+      console_enable: false
+      csv_append: false
+      csv_enable: true
+      csv_path: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/ntu_spms2/targeted_ablation_v1/C3/run03/runtime.csv
+      sensor_debug: false
+      summary_interval_frames: 1000000
+    use_sim_time: true
+

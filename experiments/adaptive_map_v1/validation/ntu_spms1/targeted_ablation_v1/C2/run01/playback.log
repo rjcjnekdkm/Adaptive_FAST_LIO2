@@ -1,0 +1,8 @@
+[INFO] [1789185111.943969486] [rosbag2_storage]: Opened database '/home/romi/Adaptive_FAST_LIO2/bag/NTU/spms_01/spms_01_ros2/spms_01_ros2.db3' for READ_ONLY.
+[INFO] [1789185111.944033117] [rosbag2_player]: Set rate to 1
+[INFO] [1789185111.953449025] [rosbag2_player]: Adding keyboard callbacks.
+[INFO] [1789185111.953503622] [rosbag2_player]: Press SPACE for Pause/Resume
+[INFO] [1789185111.953513343] [rosbag2_player]: Press CURSOR_RIGHT for Play Next Message
+[INFO] [1789185111.953520217] [rosbag2_player]: Press CURSOR_UP for Increase Rate 10%
+[INFO] [1789185111.953526305] [rosbag2_player]: Press CURSOR_DOWN for Decrease Rate 10%
+[INFO] [1789185111.954135120] [rosbag2_storage]: Opened database '/home/romi/Adaptive_FAST_LIO2/bag/NTU/spms_01/spms_01_ros2/spms_01_ros2.db3' for READ_ONLY.

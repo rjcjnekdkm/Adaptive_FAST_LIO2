@@ -1,0 +1,38 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel1/fastlio2_stamp_check/official_rmse_begin/fastlio2_begin.txt:
+--------------------------------------------------------------------------------
+Loaded 2042 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel1/fastlio2_stamp_check/official_rmse_begin/fastlio2_begin.txt
+Loaded 435 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel1/fastlio2_stamp_check/official_rmse_begin/leica_ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 433 of max. 435 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel1/fastlio2_stamp_check/official_rmse_begin/fastlio2_begin.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel1/fastlio2_stamp_check/official_rmse_begin/leica_ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.0 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.49289058  0.86992771  0.01687173]
+ [-0.86238488 -0.49100826  0.1233013 ]
+ [ 0.11554737  0.04622412  0.99222585]]
+Translation of alignment:
+[-126.96913211  184.20460023  -31.85983578]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 433 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.709272
+      mean	0.356294
+    median	0.336705
+       min	0.203708
+      rmse	0.365718
+       sse	57.913640
+       std	0.082488
+
+
+Extracted RMSE: 0.365718
+Average RMSE: 0.365718
+ The minimum min_rmse is 0.365718

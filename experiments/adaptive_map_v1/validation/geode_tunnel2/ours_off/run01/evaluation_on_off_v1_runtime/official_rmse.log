@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/ours_off/run01/evaluation_on_off_v1_runtime/ours_off.txt:
+--------------------------------------------------------------------------------
+Loaded 2610 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/ours_off/run01/evaluation_on_off_v1_runtime/ours_off.txt
+Loaded 618 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/ours_off/run01/evaluation_on_off_v1_runtime/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 618 of max. 618 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/ours_off/run01/evaluation_on_off_v1_runtime/ours_off.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/ours_off/run01/evaluation_on_off_v1_runtime/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.66100496  0.75035514  0.00629341]
+ [-0.74972901 -0.66075662  0.03615384]
+ [ 0.03128663  0.01917951  0.99932642]]
+Translation of alignment:
+[-86.17126596 209.07883818 -18.02162011]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 618 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	3.528618
+      mean	2.027900
+    median	2.200581
+       min	0.094827
+      rmse	2.162971
+       sse	2891.277646
+       std	0.752374
+
+
+Extracted RMSE: 2.162971
+Average RMSE: 2.162971
+ The minimum min_rmse is 2.162971
+

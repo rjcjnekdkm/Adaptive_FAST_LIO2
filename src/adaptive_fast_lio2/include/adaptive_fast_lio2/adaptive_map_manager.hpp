@@ -19,6 +19,8 @@ public:
 
     // 查询地图是否为空以及当前有效地图点数量。
     bool empty() const;
+    bool hasRoot() const;
+    void collectRemovedPoints();
     size_t size() const;
 
     // 获取用于发布的地图点云缓存。

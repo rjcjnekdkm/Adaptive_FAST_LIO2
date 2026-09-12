@@ -1,0 +1,16 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/ntu_spms2/targeted_ablation_v1/C2/run03/runtime.csv",
+  "source_sha256": "edca1a5c504d5a2a4679d84ef29ab23a52bc63e06babb5ea827ef288ed417a27",
+  "gt": "bag/NTU/spms_02/ground_truth/ground_truth.csv",
+  "gt_sha256": "8c4890b87e1c2834500b0835e2978d3aca241aed1b6de68fbfd41892450e52b0",
+  "stamp": "lidar_end_time; end-of-scan pose",
+  "method": "C2",
+  "runtime_source_revision": "not captured at run time; do not infer from current HEAD",
+  "rows": 3452,
+  "duration_s": 364.6896619796753,
+  "max_gap_s": 0.3504030704498291,
+  "protocol": "Local Python implementation of NTU VIRAL protocol; not official MATLAB execution",
+  "evaluator_sha256": "0b801405594e1a4872d36ef865a3596e66a5c794d9cdd73762f402ec7d5102de",
+  "associated_samples": 2386,
+  "ate_rmse_m": 3.6384189245480854
+}

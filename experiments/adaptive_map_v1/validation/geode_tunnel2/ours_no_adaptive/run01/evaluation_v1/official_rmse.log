@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/ours_no_adaptive/run01/evaluation_v1/ours_no_adaptive.txt:
+--------------------------------------------------------------------------------
+Loaded 2575 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/ours_no_adaptive/run01/evaluation_v1/ours_no_adaptive.txt
+Loaded 618 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/ours_no_adaptive/run01/evaluation_v1/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 612 of max. 618 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/ours_no_adaptive/run01/evaluation_v1/ours_no_adaptive.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/ours_no_adaptive/run01/evaluation_v1/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.98945001  0.07952494  0.12109695]
+ [-0.05743791 -0.98270614  0.17603841]
+ [ 0.13300216  0.16722565  0.97690634]]
+Translation of alignment:
+[111.03021302 254.76025997 -66.56697325]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 612 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	59.530601
+      mean	35.110039
+    median	33.478433
+       min	4.420922
+      rmse	38.004938
+       sse	883957.708049
+       std	14.548556
+
+
+Extracted RMSE: 38.004938
+Average RMSE: 38.004938
+ The minimum min_rmse is 38.004938
+

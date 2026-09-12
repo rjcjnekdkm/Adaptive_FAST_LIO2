@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <deque>
 
 #include <Eigen/Dense>
 
@@ -38,5 +39,5 @@ struct MeasureGroup
 
     // 当前帧点云，以及覆盖该帧时间区间的 IMU 消息序列。
     PointCloudXYZI::Ptr lidar;
-    std::vector<sensor_msgs::msg::Imu::ConstSharedPtr> imu;
+    std::deque<sensor_msgs::msg::Imu::ConstSharedPtr> imu;
 };

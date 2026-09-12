@@ -9,7 +9,7 @@
  * @brief 单帧地图更新实验统计
  *
  * 该结构只保存已经计算完成的数据，不参与 SLAM 状态估计和地图筛选。
- * adaptive_laserMapping.cpp 在每次 map_incremental() 完成后填充一行，
+ * adaptive_laserMapping.cpp 在地图更新完成或因有效点不足跳过时填充一行，
  * AdaptiveRuntimeLogger 再按照固定列顺序写入 CSV。
  *
  * 后续增加实验指标时，需要同时修改：
@@ -84,13 +84,32 @@ struct RuntimeLogRow
     std::uint64_t total_direction_rejected = 0;
     std::uint64_t total_persistent_quota_rejected = 0;
     std::uint64_t total_voxel_rejected = 0;
-    bool scan_end_use_last_point = false;
-    double scan_last_offset_s = 0.0;
-    double scan_max_offset_s = 0.0;
-    bool scan_end_fallback = false;
     std::size_t sync_imu_samples = 0;
     double sync_imu_first_time = 0.0;
     double sync_imu_last_time = 0.0;
+    std::string frontend_core_revision = "fastlio2_internal_v1";
+    // frame retains the map-update count; log_sequence includes skipped updates.
+    std::uint64_t log_sequence = 0;
+    bool map_update_skipped = false;
+    std::string map_skip_reason = "none";
+    bool window_updated = false;
+    int range_near_rejected = 0;
+    int range_far_rejected = 0;
+    double map_min_range = 0.0;
+    double map_max_range = 0.0;
+    int map_min_effective_points = 0;
+    std::string runtime_schema_revision = "map_diagnostics_v5";
+    bool invalid_quality_filter_enabled = true;
+    bool invalid_quality_low_effective_relax_enabled = false;
+    bool invalid_quality_relax_active = false;
+    int invalid_quality_relax_effective_threshold = 0;
+    int invalid_quality_relaxed = 0;
+    std::uint64_t total_invalid_quality_relaxed = 0;
+    bool invalid_quality_turn_guard_enabled = false;
+    bool invalid_quality_turn_guard_active = false;
+    double invalid_quality_turn_guard_yaw_threshold = 0.0;
+    int invalid_quality_turn_guard_rejected = 0;
+    std::uint64_t total_invalid_quality_turn_guard_rejected = 0;
 };
 
 /**

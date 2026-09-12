@@ -1,0 +1,19 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/geode_tunnel1/fastlio2_blind2/run01/runtime.csv",
+  "source_sha256": "13ecdd42bb0d9c419e1d62e364de4ecd7529f77da28eeb8afffe4a541749907b",
+  "gt": "bag/GEODE/Tunneling_tunnel_gamma/groudtruth/Tunneling_tunnel1.txt",
+  "gt_sha256": "603bf842bcfcb8886fd885cb396bb1009941ee0fe41779767d06318bb91bf803",
+  "stamp": "stamp; end-of-scan pose",
+  "method": "fastlio2_blind2",
+  "runtime_source_revision": "not captured at run time; do not infer from current HEAD",
+  "rows": 2085,
+  "duration_s": 208.39940762519836,
+  "max_gap_s": 0.1006627082824707,
+  "protocol": "GEODE original local conversion + rmse.py",
+  "converter_sha256": "cc8fd2ca405f2dfa662fe1e8a2b665a76c90017edfadc6f62547d1f669dc4433",
+  "scorer_sha256": "2b0db56c90651512bd1f9f01a1772a2390b89b71f86b676e95f5c1b2ed3e38b5",
+  "time_offset_s": 0.1,
+  "offset_applies_to": "GT (second evo input)",
+  "offset_basis": "previous user-specified protocol; not an official mandated offset",
+  "ate_rmse_m": 0.380394
+}

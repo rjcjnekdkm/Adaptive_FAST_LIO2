@@ -7,6 +7,8 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(-O3)
@@ -42,6 +44,21 @@ add_executable(adaptive_fastlio_mapping
   src/adaptive_map_manager.cpp
   src/adaptive_runtime_logger.cpp
 )
+
+# Match FAST_LIO's matching-worker selection for the shared internal frontend.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
+  include(ProcessorCount)
+  ProcessorCount(N)
+  if(N GREATER 4)
+    target_compile_definitions(adaptive_fastlio_mapping PRIVATE MP_EN MP_PROC_NUM=3)
+  elseif(N GREATER 3)
+    target_compile_definitions(adaptive_fastlio_mapping PRIVATE MP_EN MP_PROC_NUM=2)
+  else()
+    target_compile_definitions(adaptive_fastlio_mapping PRIVATE MP_PROC_NUM=1)
+  endif()
+else()
+  target_compile_definitions(adaptive_fastlio_mapping PRIVATE MP_PROC_NUM=1)
+endif()
 
 ament_target_dependencies(adaptive_fastlio_mapping
   rclcpp
@@ -87,6 +104,10 @@ install(TARGETS adaptive_fastlio_mapping adaptive_degenerate_backend
 )
 
 install(DIRECTORY config launch rviz
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(FILES LICENSE.FAST_LIO BASELINE_ALIGNMENT.md
   DESTINATION share/${PROJECT_NAME}
 )
 

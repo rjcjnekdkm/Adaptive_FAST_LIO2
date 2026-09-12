@@ -1,0 +1,109 @@
+{
+  "source_csv": "/home/romi/Adaptive_FAST_LIO2/experiments/stage2/subt_long_corridor_relative_diagnostic/adaptive_runtime.csv",
+  "frames": 2539,
+  "duration_seconds": 277.85238885879517,
+  "median_window_frames": 20,
+  "mode_counts": {
+    "0": 2257,
+    "1": 139,
+    "2": 143
+  },
+  "localizability_f0": {
+    "count": 2539,
+    "min": 0.023571233,
+    "p10": 0.039527087,
+    "median": 0.076741691,
+    "p90": 0.23716592,
+    "max": 0.301871905
+  },
+  "localizability_lambda0": {
+    "count": 2539,
+    "min": 0.022103865,
+    "p10": 0.036453925,
+    "median": 0.06737203,
+    "p90": 0.210954554,
+    "max": 0.268337743
+  },
+  "localizability_observed_voxels": {
+    "count": 2539,
+    "min": 322.0,
+    "p10": 435.0,
+    "median": 627.0,
+    "p90": 706.0,
+    "max": 940.0
+  },
+  "translation_cov_eigen_max": {
+    "count": 2539,
+    "min": 2.687e-06,
+    "p10": 6.164e-06,
+    "median": 1.2183e-05,
+    "p90": 2.5909e-05,
+    "max": 4.9413e-05
+  },
+  "rotation_cov_eigen_max": {
+    "count": 2539,
+    "min": 3.1e-08,
+    "p10": 5.31e-07,
+    "median": 5.034e-06,
+    "p90": 8.862e-06,
+    "max": 1.3339e-05
+  },
+  "effective_ratio": {
+    "count": 2539,
+    "min": 0.242990654,
+    "p10": 0.36343852,
+    "median": 0.576744186,
+    "p90": 0.745879121,
+    "max": 0.824408468
+  },
+  "residual_mean": {
+    "count": 2539,
+    "min": 0.014172744,
+    "p10": 0.019171523,
+    "median": 0.027225007,
+    "p90": 0.037928842,
+    "max": 0.115754345
+  },
+  "insert_ratio": {
+    "count": 2539,
+    "min": 0.0,
+    "p10": 0.006257822,
+    "median": 0.033519553,
+    "p90": 0.104529617,
+    "max": 0.440613027
+  },
+  "relative_baseline_ready_frames": 1939,
+  "relative_persistent_candidate_frames": 443,
+  "relative_f0_baseline": {
+    "count": 2539,
+    "min": 0.0,
+    "p10": 0.0,
+    "median": 0.178653669,
+    "p90": 0.227267001,
+    "max": 0.252431313
+  },
+  "relative_lambda0_baseline": {
+    "count": 2539,
+    "min": 0.0,
+    "p10": 0.0,
+    "median": 0.163587784,
+    "p90": 0.202895781,
+    "max": 0.221259692
+  },
+  "relative_f0_ratio": {
+    "count": 2539,
+    "min": 0.162906269,
+    "p10": 0.226951074,
+    "median": 0.554266016,
+    "p90": 1.134364455,
+    "max": 2.285227189
+  },
+  "relative_lambda0_ratio": {
+    "count": 2539,
+    "min": 0.163230299,
+    "p10": 0.231000827,
+    "median": 0.531151803,
+    "p90": 1.133114286,
+    "max": 2.308954871
+  }
+}

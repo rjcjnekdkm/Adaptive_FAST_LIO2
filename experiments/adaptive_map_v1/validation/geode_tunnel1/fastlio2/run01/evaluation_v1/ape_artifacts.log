@@ -1,0 +1,40 @@
+--------------------------------------------------------------------------------
+Loaded 2082 stamps and poses from: fastlio2.txt
+Loaded 435 stamps and poses from: ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 434 of max. 435 possible matching timestamps between...
+	fastlio2.txt
+and:	ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.49300335  0.86987176  0.01645646]
+ [-0.86268838 -0.49120883  0.12034386]
+ [ 0.11276729  0.04513313  0.99259586]]
+Translation of alignment:
+[-126.93120672  184.31219963  -31.36794652]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 434 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.728658
+      mean	0.357638
+    median	0.340493
+       min	0.198765
+      rmse	0.367261
+       sse	58.538266
+       std	0.083522
+
+--------------------------------------------------------------------------------
+Plotting results... 
+Plot saved to ape_raw.png
+Plot saved to ape_map.png
+--------------------------------------------------------------------------------
+Saving results to ape.zip...
+

@@ -1,0 +1,8 @@
+[INFO] [1789179919.436721772] [rosbag2_storage]: Opened database '/home/romi/Adaptive_FAST_LIO2/bag/GEODE/water/Inland_Waterways_Short_Gamma_ros2/Inland_Waterways_Short_Gamma_ros2.db3' for READ_ONLY.
+[INFO] [1789179919.436806066] [rosbag2_player]: Set rate to 1
+[INFO] [1789179919.450264170] [rosbag2_player]: Adding keyboard callbacks.
+[INFO] [1789179919.450358092] [rosbag2_player]: Press SPACE for Pause/Resume
+[INFO] [1789179919.450371945] [rosbag2_player]: Press CURSOR_RIGHT for Play Next Message
+[INFO] [1789179919.450380492] [rosbag2_player]: Press CURSOR_UP for Increase Rate 10%
+[INFO] [1789179919.450387664] [rosbag2_player]: Press CURSOR_DOWN for Decrease Rate 10%
+[INFO] [1789179919.451039520] [rosbag2_storage]: Opened database '/home/romi/Adaptive_FAST_LIO2/bag/GEODE/water/Inland_Waterways_Short_Gamma_ros2/Inland_Waterways_Short_Gamma_ros2.db3' for READ_ONLY.

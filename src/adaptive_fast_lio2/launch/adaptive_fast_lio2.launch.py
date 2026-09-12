@@ -45,7 +45,11 @@ def generate_launch_description():
     adaptive_map_enable = LaunchConfiguration("adaptive_map_enable")
     adaptive_window_enable = LaunchConfiguration("adaptive_window_enable")
     transient_novel_quota_enable = LaunchConfiguration("transient_novel_quota_enable")
-    scan_end_use_last_point = LaunchConfiguration("scan_end_use_last_point")
+    invalid_quality_filter_enable = LaunchConfiguration("invalid_quality_filter_enable")
+    invalid_quality_low_effective_relax_enable = LaunchConfiguration(
+        "invalid_quality_low_effective_relax_enable")
+    invalid_quality_turn_guard_enable = LaunchConfiguration(
+        "invalid_quality_turn_guard_enable")
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
@@ -231,7 +235,7 @@ def generate_launch_description():
         "frontend_runtime_csv_path",
         default_value=(
             "/home/romi/Adaptive_FAST_LIO2/experiments/"
-            "geode_tunneling_tunnel_gamma/results/adaptive_runtime.csv"
+            "adaptive_map_v1/validation/shared_core_v1/manual/runtime.csv"
         ),
         description="CSV output path for frontend runtime/degradation statistics"
     )
@@ -254,9 +258,22 @@ def generate_launch_description():
         description="True keeps the Transient novel-point quota; false bypasses only this quota"
     )
 
-    declare_scan_end_use_last_point_cmd = DeclareLaunchArgument(
-        "scan_end_use_last_point", default_value="false",
-        description="Use last-point time instead of maximum point time for a controlled scan-end ablation"
+    declare_invalid_quality_filter_enable_cmd = DeclareLaunchArgument(
+        "invalid_quality_filter_enable",
+        default_value="true",
+        description="Reject unmatched points with local neighbors in degenerate frames"
+    )
+
+    declare_invalid_quality_low_effective_relax_enable_cmd = DeclareLaunchArgument(
+        "invalid_quality_low_effective_relax_enable",
+        default_value="false",
+        description="Relax invalid-quality rejection only in low-effective recovery frames"
+    )
+
+    declare_invalid_quality_turn_guard_enable_cmd = DeclareLaunchArgument(
+        "invalid_quality_turn_guard_enable",
+        default_value="false",
+        description="Pause low-effective invalid-quality relaxation during high-yaw turns"
     )
 
     adaptive_lio_node = Node(
@@ -270,7 +287,11 @@ def generate_launch_description():
             {"adaptive_map.enable": adaptive_map_enable},
             {"adaptive_window.enable": adaptive_window_enable},
             {"adaptive_map.transient_novel_quota_enable": transient_novel_quota_enable},
-            {"mapping.scan_end_use_last_point": scan_end_use_last_point}
+            {"adaptive_map.invalid_quality_filter_enable": invalid_quality_filter_enable},
+            {"adaptive_map.invalid_quality_low_effective_relax_enable":
+                invalid_quality_low_effective_relax_enable},
+            {"adaptive_map.invalid_quality_turn_guard_enable":
+                invalid_quality_turn_guard_enable}
         ],
         output="screen"
     )
@@ -344,7 +365,9 @@ def generate_launch_description():
     ld.add_action(declare_adaptive_map_enable_cmd)
     ld.add_action(declare_adaptive_window_enable_cmd)
     ld.add_action(declare_transient_novel_quota_enable_cmd)
-    ld.add_action(declare_scan_end_use_last_point_cmd)
+    ld.add_action(declare_invalid_quality_filter_enable_cmd)
+    ld.add_action(declare_invalid_quality_low_effective_relax_enable_cmd)
+    ld.add_action(declare_invalid_quality_turn_guard_enable_cmd)
 
     ld.add_action(adaptive_lio_node)
     ld.add_action(adaptive_backend_node)

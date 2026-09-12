@@ -1,0 +1,8 @@
+[INFO] [1789110905.868979484] [rosbag2_storage]: Opened database '/home/romi/Adaptive_FAST_LIO2/bag/GEODE/Tunneling_tunnel_gamma/Tunneling_tunnel5_gamma_ros2/Tunneling_tunnel5_gamma_ros2.db3' for READ_ONLY.
+[INFO] [1789110905.869062484] [rosbag2_player]: Set rate to 0.5
+[INFO] [1789110905.885525886] [rosbag2_player]: Adding keyboard callbacks.
+[INFO] [1789110905.885763386] [rosbag2_player]: Press SPACE for Pause/Resume
+[INFO] [1789110905.885798086] [rosbag2_player]: Press CURSOR_RIGHT for Play Next Message
+[INFO] [1789110905.885812986] [rosbag2_player]: Press CURSOR_UP for Increase Rate 10%
+[INFO] [1789110905.885825586] [rosbag2_player]: Press CURSOR_DOWN for Decrease Rate 10%
+[INFO] [1789110905.886766186] [rosbag2_storage]: Opened database '/home/romi/Adaptive_FAST_LIO2/bag/GEODE/Tunneling_tunnel_gamma/Tunneling_tunnel5_gamma_ros2/Tunneling_tunnel5_gamma_ros2.db3' for READ_ONLY.

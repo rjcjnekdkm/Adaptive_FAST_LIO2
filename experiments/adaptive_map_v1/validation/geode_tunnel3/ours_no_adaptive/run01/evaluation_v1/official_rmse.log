@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel3/ours_no_adaptive/run01/evaluation_v1/ours_no_adaptive.txt:
+--------------------------------------------------------------------------------
+Loaded 2506 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel3/ours_no_adaptive/run01/evaluation_v1/ours_no_adaptive.txt
+Loaded 478 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel3/ours_no_adaptive/run01/evaluation_v1/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 477 of max. 478 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel3/ours_no_adaptive/run01/evaluation_v1/ours_no_adaptive.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel3/ours_no_adaptive/run01/evaluation_v1/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.53344995  0.84580149 -0.00714032]
+ [-0.83144661 -0.52280864  0.1880629 ]
+ [ 0.15533086  0.10625894  0.98213103]]
+Translation of alignment:
+[-115.43809367  197.37545804  -50.06126218]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 477 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	20.912912
+      mean	8.231592
+    median	7.600284
+       min	0.693112
+      rmse	9.624905
+       sse	44188.705419
+       std	4.987954
+
+
+Extracted RMSE: 9.624905
+Average RMSE: 9.624905
+ The minimum min_rmse is 9.624905
+

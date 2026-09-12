@@ -1,0 +1,15 @@
+sequence,off_run,off_n,on_n,off_mean,off_sd,on_mean,improvement_pct,on_end_delta_s,status
+geode_offroad1,run01,1,1,0.083145,0,0.076725,7.7214504780804605,0.0,scored_not_success_certified
+geode_offroad2,run01,1,1,0.109786,0,0.108194,1.4500938188840018,0.0,scored_not_success_certified
+geode_offroad3,run01,1,1,0.092068,0,0.092139,-0.07711691358560646,0.0,scored_not_success_certified
+geode_tunnel1,run01,1,1,0.378592,0,0.374297,1.1344666553968374,0.0,scored_not_success_certified
+geode_tunnel2,run02,3,1,1.354696,0.83548716923182,2.092863,-54.48949432197334,0.0,scored_not_success_certified
+geode_tunnel3,run02,3,1,0.636794,0.8353850747643269,0.147075,76.90383389290729,0.0,scored_not_success_certified
+geode_tunnel4,run01,1,1,0.129121,0,0.144934,-12.246652364836086,0.0,scored_not_success_certified
+geode_tunnel5,run02,3,1,0.26974533333333334,0.10024986111877328,676.056726,,-63.900351762771606,incomplete_recording
+geode_waterway_medium,run01,1,1,0.73809,0,0.77394,-4.857131244157209,0.0,scored_not_success_certified
+geode_waterway_short,run01,1,1,0.244923,0,0.353607,-44.37476268051592,0.09928035736083984,scored_not_success_certified
+ntu_spms1,run01,1,1,2.1255968406966015,0,0.24932631959622595,88.27029120373943,0.0,scored_not_success_certified
+ntu_spms2,run01,1,1,4.439032477412677,0,5.471411013019022,-23.256836728711548,0.0,scored_not_success_certified
+ntu_spms3,run01,1,1,1.1079443253999228,0,0.5752946629144443,48.075489920778615,0.0,scored_not_success_certified
+subt_hawkins,run01,1,1,24.483131,0,12.058145,50.74917092915935,-0.1008601188659668,scored_not_success_certified

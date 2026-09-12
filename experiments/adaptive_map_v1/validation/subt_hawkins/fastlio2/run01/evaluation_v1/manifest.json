@@ -1,0 +1,14 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/subt_hawkins/fastlio2/run01/runtime.csv",
+  "source_sha256": "92abdf6036d5dc273510792320c86ff179047e40e5cfa6c8ec00ea737b04984e",
+  "gt": "bag/SubT_MRS/ground_truth_path.csv",
+  "gt_sha256": "e4b6d79ac500d517dbb88c8933df31ca6b0bffb2fdf5e5988456be81f7280b64",
+  "stamp": "Odometry.header.stamp; current source uses lidar_end_time",
+  "runtime_source_revision": "not captured at run time; do not infer from current HEAD",
+  "rows": 2288,
+  "duration_s": 278.3566906452179,
+  "max_gap_s": 1.1093978881835938,
+  "protocol": "SubT evo SE(3) alignment, max_diff=0.1s, offset=0",
+  "time_offset_s": 0,
+  "ate_rmse_m": 6.546465
+}

@@ -1,0 +1,18 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/geode_waterway_medium/fastlio2/run01/runtime.csv",
+  "source_sha256": "60120e4aa5f5e0fa8c2af3167afe4195f87aa06c0dad9765dae25f9f169d8a92",
+  "gt": "bag/GEODE/water/groudtruth/Inland_Waterways_Medium_beta.txt",
+  "gt_sha256": "8396e9b92bff9a7571bdd0888cffe6c4d12c7e5a3e1eb63a78cc96898db44140",
+  "stamp": "Odometry.header.stamp; current source uses lidar_end_time",
+  "runtime_source_revision": "not captured at run time; do not infer from current HEAD",
+  "rows": 8376,
+  "duration_s": 837.5009822845459,
+  "max_gap_s": 0.12134075164794922,
+  "protocol": "GEODE original local conversion + rmse.py",
+  "converter_sha256": "258452c5439128d2a375dd7bf8b2b648b7f4550adbfb39a32b981e3604bca01e",
+  "scorer_sha256": "2b0db56c90651512bd1f9f01a1772a2390b89b71f86b676e95f5c1b2ed3e38b5",
+  "time_offset_s": 0.1,
+  "offset_applies_to": "GT (second evo input)",
+  "offset_basis": "previous user-specified protocol; not an official mandated offset",
+  "ate_rmse_m": 0.745051
+}

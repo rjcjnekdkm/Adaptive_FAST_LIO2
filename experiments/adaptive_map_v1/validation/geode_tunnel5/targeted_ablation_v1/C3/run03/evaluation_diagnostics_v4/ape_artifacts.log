@@ -1,0 +1,70 @@
+--------------------------------------------------------------------------------
+Loaded 2315 stamps and poses from: C3.txt
+Loaded 625 stamps and poses from: ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 623 of max. 625 possible matching timestamps between...
+	C3.txt
+and:	ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.21911897 -0.97441928  0.04993935]
+ [ 0.97362111 -0.22170384 -0.05393838]
+ [ 0.06363035  0.03680308  0.9972947 ]]
+Translation of alignment:
+[ 342.46464375 -125.71273837  -34.81803894]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 623 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.444593
+      mean	0.085051
+    median	0.056612
+       min	0.006155
+      rmse	0.112406
+       sse	7.871672
+       std	0.073495
+
+[ERROR] Unhandled error in evo.cli.ape
+Traceback (most recent call last):
+  File "/home/romi/.local/lib/python3.10/site-packages/pandas/__init__.py", line 26, in <module>
+    from pandas.compat import (
+  File "/home/romi/.local/lib/python3.10/site-packages/pandas/compat/__init__.py", line 28, in <module>
+    from pandas.compat.numpy import is_numpy_dev
+  File "/home/romi/.local/lib/python3.10/site-packages/pandas/compat/numpy/__init__.py", line 21, in <module>
+    raise ImportError(
+ImportError: this version of pandas is incompatible with numpy < 1.22.4
+your numpy version is 1.21.5.
+Please upgrade numpy to >= 1.22.4 to use this pandas version
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/romi/.local/lib/python3.10/site-packages/evo/cli/entry_points.py", line 96, in launch
+    main_module.run(args)
+  File "/home/romi/.local/lib/python3.10/site-packages/evo/cli/ape.py", line 106, in run
+    common.plot_result(
+  File "/home/romi/.local/lib/python3.10/site-packages/evo/cli/common_ape_rpe.py", line 173, in plot_result
+    from evo.tools import plot
+  File "/home/romi/.local/lib/python3.10/site-packages/evo/tools/plot.py", line 37, in <module>
+    import seaborn as sns
+  File "/home/romi/.local/lib/python3.10/site-packages/seaborn/__init__.py", line 2, in <module>
+    from .rcmod import *  # noqa: F401,F403
+  File "/home/romi/.local/lib/python3.10/site-packages/seaborn/rcmod.py", line 5, in <module>
+    from . import palettes
+  File "/home/romi/.local/lib/python3.10/site-packages/seaborn/palettes.py", line 9, in <module>
+    from .utils import desaturate, get_color_cycle
+  File "/home/romi/.local/lib/python3.10/site-packages/seaborn/utils.py", line 11, in <module>
+    import pandas as pd
+  File "/home/romi/.local/lib/python3.10/site-packages/pandas/__init__.py", line 31, in <module>
+    raise ImportError(
+ImportError: C extension: None not built. If you want to import pandas from the source directory, you may need to run 'python setup.py build_ext' to build the C extensions first.
+
+[ERROR] evo module evo.cli.ape crashed - no logfile written (disabled)
+

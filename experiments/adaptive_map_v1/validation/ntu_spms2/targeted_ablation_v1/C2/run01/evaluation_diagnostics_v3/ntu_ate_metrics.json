@@ -1,0 +1,35 @@
+{
+  "protocol": "NTU VIRAL official: prism compensation + <0.1s interpolation + SE(3) alignment",
+  "associated_samples": 2366,
+  "ate_rmse_m": 4.59764525570871,
+  "mean_position_error_m": 4.307205640967897,
+  "median_position_error_m": 3.9597002528528256,
+  "max_position_error_m": 7.7300090416896,
+  "prism_in_body_m": [
+    -0.293656,
+    -0.012288,
+    -0.273095
+  ],
+  "rotation_estimate_to_leica": [
+    [
+      -0.8612420982068607,
+      0.5066465110851069,
+      0.039640397091001624
+    ],
+    [
+      0.5040600605778521,
+      0.861562107289984,
+      -0.06028424845921561
+    ],
+    [
+      -0.06469546820678429,
+      -0.03193819167281835,
+      -0.9973938280870679
+    ]
+  ],
+  "translation_estimate_to_leica_m": [
+    -3.023982272809201,
+    -2.76278314499587,
+    0.9637814235467452
+  ]
+}

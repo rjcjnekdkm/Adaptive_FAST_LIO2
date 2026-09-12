@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <cmath>
 #include <iostream>
+#include <stdexcept>
+#include <rclcpp/create_timer.hpp>
 #include <condition_variable>
 #include <unordered_map>
 #include <numeric>
@@ -110,6 +112,8 @@ uint64_t total_quality_rejected = 0;
 uint64_t total_direction_rejected = 0;
 uint64_t total_persistent_quota_rejected = 0;
 uint64_t total_voxel_rejected = 0;
+uint64_t total_invalid_quality_relaxed = 0;
+uint64_t total_invalid_quality_turn_guard_rejected = 0;
 size_t last_map_add_num = 0;
 
 // ===================== 全局参数 =====================
@@ -123,8 +127,8 @@ int scan_line = 6;
 int point_filter_num = 3;
 int timestamp_unit = US;
 int scan_rate = 10;
-// IMU 初始化累计样本数量；按数据集 IMU 频率配置初始化时间窗口。
-int imu_init_num = 200;
+// FAST-LIO2 MAX_INI_COUNT；N 从 1 开始，每批累计后检查 N > 10。
+int imu_init_num = 10;
 
 // LiDAR 近距离盲区半径，单位：米。
 double blind = 4.0;
@@ -151,13 +155,12 @@ bool local_map_delete_enable = true;
 bool lidar_pushed = false; //  当前 lidar_buffer.front() 是否已经取出来等待 IMU
 // 当前等待同步的 LiDAR 帧结束时间，单位：秒。
 double lidar_end_time = 0.0;
-double lidar_mean_scantime = 0.1;  //  如果当前点云没有每点时间，就用平均扫描时间估计帧结束时间
-bool scan_end_use_last_point = false;
-double scan_last_offset_s = 0.0;
-double scan_max_offset_s = 0.0;
-bool scan_end_fallback = false;
+double lidar_mean_scantime = 0.0;  //  如果当前点云没有每点时间，就用平均扫描时间估计帧结束时间
+bool flg_first_scan = true;
+bool flg_EKF_inited = false;
+double first_lidar_time = 0.0;
 
-int scan_num = 0; //  用来统计已经处理的 LiDAR 帧数       
+int scan_num = 0; //  用来统计已经处理的 LiDAR 帧数
 
 
 // ===================== LiDAR-IMU 外参 =====================
@@ -220,6 +223,13 @@ int adaptive_max_points_per_normal_bin = 30;
 // 退化帧中允许写入的地图未知区域点上限，防止完全阻断地图向新区域生长。
 int adaptive_max_novel_points_per_frame = 50;
 bool adaptive_transient_novel_quota_enable = false;
+bool adaptive_invalid_quality_filter_enable = true;
+// 保留 invalid_quality 保护，但在有效约束不足的恢复区间临时放宽；
+// 上界由 adaptive_map.min_effective_points 配置，20点整帧门槛仍先执行。
+bool adaptive_invalid_quality_low_effective_relax_enable = false;
+// R1: during a high-yaw degenerate turn, keep the normal invalid-quality
+// rejection instead of relaxing it. This only guards map insertion.
+bool adaptive_invalid_quality_turn_guard_enable = false;
 
 // ===================== 滑动窗口退化判断参数 =====================
 // 是否启用滑动窗口
@@ -351,7 +361,7 @@ double effective_score_threshold = 0.9;
 // 每帧最多迭代次数
 int scan_match_max_iteration = 3;
 
-// 有效残差点数量太少时，不做位姿更新
+// Adaptive-only 入图门槛；不参与共享估计器的有效性判断。
 int scan_match_min_effective_points = 20;
 
 // LiDAR 点到面观测噪声协方差，对应 FAST-LIO2 中的 LASER_POINT_COV。
@@ -384,7 +394,8 @@ std::shared_ptr<AdaptiveMapManager> p_map(new AdaptiveMapManager());
 //   3. 后续再做状态更新和 map_incremental()。
 
 // 地图是否已由首个有效点云完成初始化。
-bool flg_map_initialized = false;
+BoxPointType LocalMap_Points;
+bool Localmap_Initialized = false;
 
 // 地图初始化需要的最少当前帧下采样点数。
 // 如果当前帧点太少，先不初始化地图。
@@ -397,7 +408,7 @@ double cube_len = 1000.0;
 
 // LiDAR 有效探测距离。
 // 后续 lasermap_fov_segment() 会根据当前位置和探测距离移动局部地图。
-double det_range = 450.0;
+float det_range = 450.0f;
 
 // 当 LiDAR 靠近局部地图边界到一定比例时，移动局部地图。
 double move_threshold = 1.5;
@@ -416,21 +427,20 @@ Eigen::Vector3d local_map_max = Eigen::Vector3d::Zero();
 /**
  * @brief ROS2 时间戳转 double 秒
  */
-inline double get_time_sec(const builtin_interfaces::msg::Time &stamp)
+inline double get_time_sec(const builtin_interfaces::msg::Time &time)
 {
-    return static_cast<double>(stamp.sec) +
-           static_cast<double>(stamp.nanosec) * 1e-9;
+    return rclcpp::Time(time).seconds();
 }
 
 /**
  * @brief double 秒转 ROS2 时间戳
  */
-inline builtin_interfaces::msg::Time get_ros_time(double t)
+inline rclcpp::Time get_ros_time(double timestamp)
 {
-    builtin_interfaces::msg::Time stamp;
-    stamp.sec = static_cast<int32_t>(std::floor(t));
-    stamp.nanosec = static_cast<uint32_t>((t - stamp.sec) * 1e9);
-    return stamp;
+    int32_t sec = std::floor(timestamp);
+    auto nanosec_d = (timestamp - std::floor(timestamp)) * 1e9;
+    uint32_t nanosec = nanosec_d;
+    return rclcpp::Time(sec, nanosec);
 }
 
 
@@ -441,7 +451,7 @@ inline builtin_interfaces::msg::Time get_ros_time(double t)
  * 2. 调用 p_pre->process()
  * 3. 把处理后的 PointCloudXYZI 放入 lidar_buffer
  */
-void standard_pcl_cbk(const sensor_msgs::msg::PointCloud2::UniquePtr msg)
+void standard_pcl_cbk(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
 {
     mtx_buffer.lock();
 
@@ -466,9 +476,7 @@ void standard_pcl_cbk(const sensor_msgs::msg::PointCloud2::UniquePtr msg)
 
     // 2. 标准 PointCloud2 点云预处理
     PointCloudXYZI::Ptr cloud(new PointCloudXYZI());
-    double lidar_beg_time_offset_sec = 0.0;
-    p_pre->process(msg, cloud, &lidar_beg_time_offset_sec);
-    cur_time += lidar_beg_time_offset_sec;
+    p_pre->process(msg, cloud);
 
     // 3. 放入 LiDAR buffer
     lidar_buffer.push_back(cloud);
@@ -486,7 +494,7 @@ void standard_pcl_cbk(const sensor_msgs::msg::PointCloud2::UniquePtr msg)
                   << ", preprocess_ms=" << preprocess_time * 1000.0
                   << std::endl;
     }
-    
+
     mtx_buffer.unlock();
     sig_buffer.notify_all();
 
@@ -499,7 +507,7 @@ void standard_pcl_cbk(const sensor_msgs::msg::PointCloud2::UniquePtr msg)
  * 3. 调用 p_pre->process()
  * 4. 把处理后的 PointCloudXYZI 放入 lidar_buffer
  */
-void livox_pcl_cbk(const livox_ros_driver2::msg::CustomMsg::UniquePtr msg)
+void livox_pcl_cbk(const livox_ros_driver2::msg::CustomMsg::ConstSharedPtr msg)
 {
     mtx_buffer.lock();
 
@@ -554,7 +562,7 @@ void livox_pcl_cbk(const livox_ros_driver2::msg::CustomMsg::UniquePtr msg)
     // 5. 放入 LiDAR buffer
     lidar_buffer.push_back(cloud);
     time_buffer.push_back(cur_time);
-    
+
 
     double preprocess_time = omp_get_wtime() - preprocess_start_time;
 
@@ -580,7 +588,7 @@ void livox_pcl_cbk(const livox_ros_driver2::msg::CustomMsg::UniquePtr msg)
  * 2. 根据 time_diff_lidar_to_imu 做时间修正
  * 3. 放入 imu_buffer
  */
-void imu_cbk(const sensor_msgs::msg::Imu::UniquePtr msg_in)
+void imu_cbk(const sensor_msgs::msg::Imu::ConstSharedPtr msg_in)
 {
     publish_count++;
 
@@ -612,7 +620,7 @@ void imu_cbk(const sensor_msgs::msg::Imu::UniquePtr msg_in)
     }
 
     last_timestamp_imu = timestamp;
-    
+
     // 5. 放入 IMU buffer
     imu_buffer.push_back(msg);
 
@@ -645,93 +653,55 @@ void imu_cbk(const sensor_msgs::msg::Imu::UniquePtr msg_in)
  */
 bool sync_packages(MeasureGroup &meas)
 {
-    // 1、如果Lidar 或 imu buffer为空，不能同步
-    if(lidar_buffer.empty() || imu_buffer.empty())
-    {
+    if (lidar_buffer.empty() || imu_buffer.empty()) {
         return false;
     }
 
-    // 2、如果还没取出当前lidar帧，则取出lidar_buffer.front()
+    /*** push a lidar scan ***/
     if(!lidar_pushed)
     {
         meas.lidar = lidar_buffer.front();
         meas.lidar_beg_time = time_buffer.front();
-
-        if(meas.lidar == nullptr || meas.lidar->empty())
+        if (meas.lidar->points.size() <= 1) // time too little
         {
-            lidar_buffer.pop_front();
-            time_buffer.pop_front();
-            return false;
+            lidar_end_time = meas.lidar_beg_time + lidar_mean_scantime;
+            std::cerr << "Too few input point cloud!\n";
         }
-
-
-        // 3. 估计当前 LiDAR 帧结束时间
-        //
-        // Livox 点云中，每个点的 curvature 存的是该点相对帧起始时刻的时间，单位 ms。
-        // 所以最后一个点 curvature / 1000.0 就是当前帧持续时间，单位秒。
-        //
-        // 如果 curvature 太小，说明没有有效每点时间，例如标准 PointCloud2 第一版。
-        // 这时使用 lidar_mean_scantime 或默认 0.1 秒估计。
-        // 标准 PointCloud2 的存储顺序不一定严格按点时间排列，因此不能
-        // 假设最后一个点就是扫描结束点。取最大相对时间可兼容 Velodyne、
-        // Ouster 与 Livox 点云，并避免低估当前帧持续时间。
-        scan_last_offset_s = static_cast<double>(meas.lidar->points.back().curvature) / 1000.0;
-        scan_max_offset_s = 0.0;
-        for (const auto &point : meas.lidar->points)
-        {
-            scan_max_offset_s = std::max(
-                scan_max_offset_s,
-                static_cast<double>(point.curvature) / 1000.0);
-        }
-        // Controlled ablation: only the selected point-time statistic changes.
-        // Keep initialization and the existing fallback policy identical in both arms.
-        const double last_point_time = scan_end_use_last_point ? scan_last_offset_s : scan_max_offset_s;
-        scan_end_fallback = last_point_time < 0.5 * lidar_mean_scantime || last_point_time <= 0.0;
-        if(scan_end_fallback)
+        else if (meas.lidar->points.back().curvature / double(1000) < 0.5 * lidar_mean_scantime)
         {
             lidar_end_time = meas.lidar_beg_time + lidar_mean_scantime;
         }
         else
         {
-            scan_num++;
-            lidar_end_time = meas.lidar_beg_time + last_point_time;
-
-            // 更新平均扫描时间
-            // 第一阶段可以简单平均
-            lidar_mean_scantime += (last_point_time - lidar_mean_scantime) / static_cast<double>(scan_num);
+            scan_num ++;
+            lidar_end_time = meas.lidar_beg_time + meas.lidar->points.back().curvature / double(1000);
+            lidar_mean_scantime += (meas.lidar->points.back().curvature / double(1000) - lidar_mean_scantime) / scan_num;
         }
 
         meas.lidar_end_time = lidar_end_time;
+
         lidar_pushed = true;
     }
 
-    // 4、如果最新imu时间还没有覆盖到当前lidar结束时间，暂时不能处理
-    double newest_imu_time = get_time_sec(imu_buffer.back()->header.stamp);
-    if(newest_imu_time < lidar_end_time)
+    if (last_timestamp_imu < lidar_end_time)
     {
         return false;
     }
 
-    // 5、取出当前lidar结束时间之前的所有imu
+    /*** push imu data, and pop from imu buffer ***/
+    double imu_time = get_time_sec(imu_buffer.front()->header.stamp);
     meas.imu.clear();
-    while (!imu_buffer.empty())
+    while ((!imu_buffer.empty()) && (imu_time < lidar_end_time))
     {
-        double imu_time = get_time_sec(imu_buffer.front()->header.stamp);
-        if(imu_time > lidar_end_time)
-        {
-            break;
-        }
-
+        imu_time = get_time_sec(imu_buffer.front()->header.stamp);
+        if(imu_time > lidar_end_time) break;
         meas.imu.push_back(imu_buffer.front());
         imu_buffer.pop_front();
     }
 
-    // 6、当前lidar帧已经同步完成，从buffer中弹出
     lidar_buffer.pop_front();
     time_buffer.pop_front();
-
     lidar_pushed = false;
-
     return true;
 }
 
@@ -747,22 +717,13 @@ bool sync_packages(MeasureGroup &meas)
  */
 void pointBodyToWorld(const PointType &pi, PointType &po)
 {
-    Eigen::Vector3d p_lidar(pi.x, pi.y, pi.z);
-
-    // LiDAR 坐标系 -> IMU/body 坐标系
-    Eigen::Vector3d p_imu =
-        state_point.offset_R_L_I.toRotationMatrix() * p_lidar +
-        state_point.offset_T_L_I;
-
-    // IMU/body 坐标系 -> world 坐标系
-    Eigen::Vector3d p_world =
-        state_point.rot.toRotationMatrix() * p_imu +
-        state_point.pos;
-
+    Eigen::Vector3d p_body(pi.x, pi.y, pi.z);
+    Eigen::Vector3d p_global(state_point.rot *
+        (state_point.offset_R_L_I * p_body + state_point.offset_T_L_I) + state_point.pos);
     po = pi;
-    po.x = static_cast<float>(p_world.x());
-    po.y = static_cast<float>(p_world.y());
-    po.z = static_cast<float>(p_world.z());
+    po.x = p_global(0);
+    po.y = p_global(1);
+    po.z = p_global(2);
 }
 
 /**
@@ -840,40 +801,32 @@ Eigen::Matrix3d skewSymmetric(const Eigen::Vector3d &v)
  *   这里不是从当前帧中提边缘点/平面点。
  *   这是 FAST-LIO2 direct scan-to-map 中，为了构造点到局部地图平面的残差而做的局部平面估计。
  */
-bool estimate_plane_from_neighbors(const std::vector<PointType> &nearest_points, Eigen::Vector3d &plane_normal, double &plane_d)
+bool estimate_plane_from_neighbors(const std::vector<PointType> &point, Eigen::Vector4f &pca_result)
 {
-    if (nearest_points.size() < static_cast<size_t>(nearest_search_num))
+    Eigen::Matrix<float, 5, 3> A;
+    Eigen::Matrix<float, 5, 1> b;
+    A.setZero();
+    b.setOnes();
+    b *= -1.0f;
+
+    for (int j = 0; j < 5; j++)
     {
-        return false;
+        A(j,0) = point[j].x;
+        A(j,1) = point[j].y;
+        A(j,2) = point[j].z;
     }
 
-    // 与官方 esti_plane() 一致：求解 n_raw · p = -1，再归一化得到平面方程。
-    Eigen::MatrixXd A(nearest_search_num, 3);
-    Eigen::VectorXd b = Eigen::VectorXd::Constant(nearest_search_num, -1.0);
-    for (int i = 0; i < nearest_search_num; ++i)
-    {
-        A(i, 0) = nearest_points[i].x;
-        A(i, 1) = nearest_points[i].y;
-        A(i, 2) = nearest_points[i].z;
-    }
+    Eigen::Matrix<float, 3, 1> normvec = A.colPivHouseholderQr().solve(b);
 
-    const Eigen::Vector3d raw_normal = A.colPivHouseholderQr().solve(b);
-    const double normal_norm = raw_normal.norm();
-    if (!std::isfinite(normal_norm) || normal_norm < 1e-9)
-    {
-        return false;
-    }
+    float n = normvec.norm();
+    pca_result(0) = normvec(0) / n;
+    pca_result(1) = normvec(1) / n;
+    pca_result(2) = normvec(2) / n;
+    pca_result(3) = 1.0 / n;
 
-    plane_normal = raw_normal / normal_norm;
-    plane_d = 1.0 / normal_norm;
-
-    for (int i = 0; i < nearest_search_num; ++i)
+    for (int j = 0; j < 5; j++)
     {
-        const Eigen::Vector3d p(
-            nearest_points[i].x,
-            nearest_points[i].y,
-            nearest_points[i].z);
-        if (std::abs(plane_normal.dot(p) + plane_d) > plane_residual_threshold)
+        if (fabs(pca_result(0) * point[j].x + pca_result(1) * point[j].y + pca_result(2) * point[j].z + pca_result(3)) > 0.1f)
         {
             return false;
         }
@@ -1277,19 +1230,47 @@ void write_runtime_log_row(
     int novel_accepted_num,
     int novel_rejected_num,
     int voxel_rejected_num,
-    int total_rejected_num)
+    int total_rejected_num,
+    int range_near_rejected_num = 0,
+    int range_far_rejected_num = 0,
+    bool map_update_skipped = false,
+    int invalid_quality_relaxed_num = 0,
+    bool invalid_quality_relax_active = false,
+    bool invalid_quality_turn_guard_active = false,
+    int invalid_quality_turn_guard_rejected_num = 0)
 {
     const size_t downsampled_points = feats_down_body->size();
     RuntimeLogRow row;
+    static std::uint64_t log_sequence = 0;
+    row.log_sequence = ++log_sequence;
+    row.map_update_skipped = map_update_skipped;
+    row.map_skip_reason = map_update_skipped ? "low_effective_points" : "none";
+    row.window_updated = !map_update_skipped && adaptive_map_enable && adaptive_window_enable;
+    row.range_near_rejected = range_near_rejected_num;
+    row.range_far_rejected = range_far_rejected_num;
+    row.map_min_range = adaptive_min_range;
+    row.map_max_range = adaptive_max_range;
+    row.map_min_effective_points = scan_match_min_effective_points;
+    row.invalid_quality_filter_enabled = adaptive_invalid_quality_filter_enable;
+    row.invalid_quality_low_effective_relax_enabled =
+        adaptive_invalid_quality_low_effective_relax_enable;
+    row.invalid_quality_relax_active = invalid_quality_relax_active;
+    row.invalid_quality_relax_effective_threshold = adaptive_min_effective_points;
+    row.invalid_quality_relaxed = invalid_quality_relaxed_num;
+    row.total_invalid_quality_relaxed = total_invalid_quality_relaxed;
+    row.invalid_quality_turn_guard_enabled =
+        adaptive_invalid_quality_turn_guard_enable;
+    row.invalid_quality_turn_guard_active = invalid_quality_turn_guard_active;
+    row.invalid_quality_turn_guard_yaw_threshold = adaptive_window_max_yaw_change;
+    row.invalid_quality_turn_guard_rejected =
+        invalid_quality_turn_guard_rejected_num;
+    row.total_invalid_quality_turn_guard_rejected =
+        total_invalid_quality_turn_guard_rejected;
 
     // 帧级状态与匹配质量指标。
     row.frame = map_update_count;
     row.lidar_begin_time = Measures.lidar_beg_time;
     row.lidar_end_time = Measures.lidar_end_time;
-    row.scan_end_use_last_point = scan_end_use_last_point;
-    row.scan_last_offset_s = scan_last_offset_s;
-    row.scan_max_offset_s = scan_max_offset_s;
-    row.scan_end_fallback = scan_end_fallback;
     row.sync_imu_samples = Measures.imu.size();
     if (!Measures.imu.empty())
     {
@@ -1311,7 +1292,8 @@ void write_runtime_log_row(
     row.quat_w = normalized_orientation.w();
     row.downsampled_points = downsampled_points;
     row.effective_points = effct_feat_num;
-    row.effective_ratio = frame_effective_ratio;
+    row.effective_ratio = downsampled_points > 0
+        ? static_cast<double>(effct_feat_num) / downsampled_points : 0.0;
     row.residual_mean = res_mean_last;
     row.residual_median = frame_residual_median;
     row.residual_mad = frame_residual_mad;
@@ -1379,7 +1361,13 @@ bool allow_map_insert_point(
     int &persistent_insert_accepted_num,
     int persistent_insert_quota,
     int &novel_accept_num,
-    int &novel_reject_num)
+    int &novel_reject_num,
+    int &range_near_reject_num,
+    int &range_far_reject_num,
+    bool invalid_quality_relax_active,
+    int &invalid_quality_relaxed_num,
+    bool invalid_quality_turn_guard_active,
+    int &invalid_quality_turn_guard_rejected_num)
 {
     if(!adaptive_map_enable)
     {
@@ -1394,11 +1382,13 @@ bool allow_map_insert_point(
 
     if(range < adaptive_min_range)
     {
+        range_near_reject_num++;
         return false;
     }
 
     if(range > adaptive_max_range)
     {
+        range_far_reject_num++;
         return false;
     }
 
@@ -1450,39 +1440,54 @@ bool allow_map_insert_point(
         if (has_local_neighbors)
         {
             // 地图附近已有结构但当前点无法形成有效约束，视为坏匹配或动态/异常点。
-            invalid_quality_num++;
-            return false;
+            if (adaptive_invalid_quality_filter_enable &&
+                !invalid_quality_relax_active)
+            {
+                invalid_quality_num++;
+                if (invalid_quality_turn_guard_active)
+                {
+                    invalid_quality_turn_guard_rejected_num++;
+                }
+                return false;
+            }
+            if (adaptive_invalid_quality_filter_enable &&
+                invalid_quality_relax_active)
+            {
+                invalid_quality_relaxed_num++;
+            }
         }
-
-        // 地图未知区域没有可用近邻。
-        //
-        // 如果完全拒绝这类点，机器人在退化环境中可能无法向前扩展地图；
-        // 如果全部接受，又可能把大量低约束/不确定点写入地图。
-        // 因此这里采用“帧级配额”：每帧只允许有限个 novel points 进入地图。
-        //
-        // Persistent 模式下配额进一步缩小：
-        //   novel_limit = max_novel_points_per_frame * persistent_novel_quota_scale
-        //
-        // 这对应长走廊/隧道中“允许地图继续生长，但降低不确定新点写入速度”。
-        const int novel_limit =
-            persistent_mode
-                ? static_cast<int>(std::round(
-                      adaptive_max_novel_points_per_frame *
-                      adaptive_window_persistent_novel_quota_scale))
-                : adaptive_max_novel_points_per_frame;
-
-        // Only Transient may bypass the novel-point count limit.
-        // Keep quality checks, direction quotas and Persistent behavior unchanged.
-        const bool bypass_novel_quota =
-            current_degeneracy_mode == DegeneracyMode::Transient &&
-            !adaptive_transient_novel_quota_enable;
-        if (!bypass_novel_quota &&
-            novel_accept_num >= std::max(0, novel_limit))
+        else
         {
-            novel_reject_num++;
-            return false;
+            // 地图未知区域没有可用近邻。
+            //
+            // 如果完全拒绝这类点，机器人在退化环境中可能无法向前扩展地图；
+            // 如果全部接受，又可能把大量低约束/不确定点写入地图。
+            // 因此这里采用“帧级配额”：每帧只允许有限个 novel points 进入地图。
+            //
+            // Persistent 模式下配额进一步缩小：
+            //   novel_limit = max_novel_points_per_frame * persistent_novel_quota_scale
+            //
+            // 这对应长走廊/隧道中“允许地图继续生长，但降低不确定新点写入速度”。
+            const int novel_limit =
+                persistent_mode
+                    ? static_cast<int>(std::round(
+                          adaptive_max_novel_points_per_frame *
+                          adaptive_window_persistent_novel_quota_scale))
+                    : adaptive_max_novel_points_per_frame;
+
+            // Only Transient may bypass the novel-point count limit.
+            // Keep quality checks, direction quotas and Persistent behavior unchanged.
+            const bool bypass_novel_quota =
+                current_degeneracy_mode == DegeneracyMode::Transient &&
+                !adaptive_transient_novel_quota_enable;
+            if (!bypass_novel_quota &&
+                novel_accept_num >= std::max(0, novel_limit))
+            {
+                novel_reject_num++;
+                return false;
+            }
+            novel_accept_num++;
         }
-        novel_accept_num++;
     }
 
     if(frame_degenerate && has_quality)
@@ -1577,28 +1582,21 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
     nearest_points_cache.resize(feats_down_body->size());
     point_selected_surf.resize(feats_down_body->size(), 0);
 
-    if (p_map == nullptr || p_map->empty())
+    if (p_map == nullptr || !p_map->hasRoot())
     {
         ekfom_data.valid = false;
         return;
     }
 
-    // R/t：IMU 到世界坐标系的当前位姿；R_li/t_li：LiDAR 到 IMU 的外参。
-    const Eigen::Matrix3d R = s.rot.toRotationMatrix();
-    const Eigen::Matrix3d R_li = s.offset_R_L_I.toRotationMatrix();
-    const Eigen::Vector3d t(
-        s.pos[0],
-        s.pos[1],
-        s.pos[2]);
-    const Eigen::Vector3d t_li(
-        s.offset_T_L_I[0],
-        s.offset_T_L_I[1],
-        s.offset_T_L_I[2]);
-
     double residual_sum = 0.0;
     std::vector<double> effective_residuals;
     effective_residuals.reserve(feats_down_body->size());
+    std::vector<PointType> observation_normals(feats_down_body->size());
 
+#ifdef MP_EN
+    omp_set_num_threads(MP_PROC_NUM);
+#pragma omp parallel for
+#endif
     for (size_t i = 0; i < feats_down_body->size(); ++i)
     {
         const PointType &point_body = feats_down_body->points[i];
@@ -1609,8 +1607,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             point_body.y,
             point_body.z);
 
-        Eigen::Vector3d p_imu = R_li * p_body + t_li;
-        Eigen::Vector3d p_world_eigen = R * p_imu + t;
+        Eigen::Vector3d p_world_eigen(s.rot * (s.offset_R_L_I * p_body + s.offset_T_L_I) + s.pos);
 
         PointType point_world = point_body;
         point_world.x = static_cast<float>(p_world_eigen.x());
@@ -1644,30 +1641,14 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             continue;
         }
 
-        Eigen::Vector3d plane_normal;
-        double plane_d = 0.0;
-
+        Eigen::Vector4f pabcd;
         point_selected_surf[i] = 0;
-        if (!estimate_plane_from_neighbors(nearest_points, plane_normal, plane_d))
-        {
-            continue;
-        }
-
-        const double residual =
-            plane_normal.dot(p_world_eigen) + plane_d;
-
-        const double point_range =
-            std::max(p_body.norm(), 1e-6);
-
-        // FAST-LIO2 风格有效性分数：相同残差下，远距离点获得略宽松的容忍度。
-        const double score =
-            1.0 - 0.9 * std::abs(residual) / std::sqrt(point_range);
-
-        // 官方条件为 s > 0.9，因此等于阈值时也应判为无效点。
-        if (score <= effective_score_threshold)
-        {
-            continue;
-        }
+        if (!estimate_plane_from_neighbors(nearest_points, pabcd)) continue;
+        const float residual = pabcd(0) * point_world.x + pabcd(1) * point_world.y +
+                               pabcd(2) * point_world.z + pabcd(3);
+        const float score = 1 - 0.9 * fabs(residual) / sqrt(p_body.norm());
+        if (!(score > 0.9)) continue;
+        const Eigen::Vector3d plane_normal = pabcd.head<3>().cast<double>();
 
         point_selected_surf[i] = 1;
         map_point_effective[i] = 1;
@@ -1681,8 +1662,16 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         normal_residual.z = static_cast<float>(plane_normal.z());
         normal_residual.intensity = static_cast<float>(residual);
 
-        laserCloudOri->push_back(point_body);
-        corr_normvect->push_back(normal_residual);
+        observation_normals[i] = normal_residual;
+    }
+
+    // Ordered compaction matches FAST-LIO2 and avoids reductions changing residual sums.
+    for (size_t i = 0; i < feats_down_body->size(); ++i)
+    {
+        if (!point_selected_surf[i]) continue;
+        const float residual = observation_normals[i].intensity;
+        laserCloudOri->push_back(feats_down_body->points[i]);
+        corr_normvect->push_back(observation_normals[i]);
         effective_point_indices.push_back(i);
 
         residual_sum += std::abs(residual);
@@ -1730,7 +1719,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             skewSymmetric(point_body);
 
         Eigen::Vector3d point_imu =
-            R_li * point_body + t_li;
+            s.offset_R_L_I * point_body + s.offset_T_L_I;
 
         Eigen::Matrix3d point_imu_cross =
             skewSymmetric(point_imu);
@@ -1742,7 +1731,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
 
         // C 为世界系法向量旋转到 IMU 系后的表达；A/B 分别对应姿态和外参旋转雅可比项。
         Eigen::Vector3d C =
-            R.transpose() * normal_world;
+            s.rot.conjugate() * normal_world;
 
         Eigen::Vector3d A =
             point_imu_cross * C;
@@ -1750,7 +1739,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         if (extrinsic_est_en)
         {
             Eigen::Vector3d B =
-                point_body_cross * R_li.transpose() * C;
+                point_body_cross * s.offset_R_L_I.conjugate() * C;
 
             ekfom_data.h_x.block<1, 12>(i, 0) <<
                 norm_p.x, norm_p.y, norm_p.z,
@@ -1871,24 +1860,12 @@ bool init_map_with_current_scan()
     }
 
     // 初始化地图。
-    // 当前 p_map->addPoints() 内部会累积点云、体素滤波、重建 KdTree。
+    // Root-less ikd-tree uses Build, as in FAST-LIO2.
     p_map->addPoints(points_to_init, true);
-
-    // 官方 FAST-LIO2 使用 LiDAR 在世界坐标系下的位置初始化局部地图。
-    local_map_center =
-        state_point.pos +
-        state_point.rot.toRotationMatrix() * state_point.offset_T_L_I;
-
-    local_map_min = local_map_center - Eigen::Vector3d(cube_len / 2.0, cube_len / 2.0, cube_len / 2.0);
-
-    local_map_max = local_map_center + Eigen::Vector3d(cube_len / 2.0, cube_len / 2.0, cube_len / 2.0);
-
-    flg_map_initialized = true;
 
     std::cout << "[MapInit] initialized. "
               << "points=" << points_to_init->size()
               << ", map_size=" << p_map->size()
-              << ", center=" << local_map_center.transpose()
               << std::endl;
 
     return true;
@@ -1907,167 +1884,50 @@ bool init_map_with_current_scan()
  */
 void lasermap_fov_segment()
 {
-    if (!local_map_enable)
-    {
+    std::vector<BoxPointType> cub_needrm;
+
+
+
+    Eigen::Vector3d pos_LiD = state_point.pos + state_point.rot * state_point.offset_T_L_I;
+    if (!Localmap_Initialized){
+        for (int i = 0; i < 3; i++){
+            LocalMap_Points.vertex_min[i] = pos_LiD(i) - cube_len / 2.0;
+            LocalMap_Points.vertex_max[i] = pos_LiD(i) + cube_len / 2.0;
+        }
+        Localmap_Initialized = true;
         return;
     }
-
-    if (!flg_map_initialized)
-    {
-        return;
-    }
-
-    /**
-     * FAST-LIO2 中用当前 LiDAR/IMU 的位置判断是否靠近局部地图边界。
-     * 当前状态 pos 表示 IMU/body 在 world 下的位置。
-     */
-    Eigen::Vector3d pos_lidar =
-        state_point.pos +
-        state_point.rot.toRotationMatrix() * state_point.offset_T_L_I;
-
-    /**
-     * 局部地图尚未初始化时，根据当前位置初始化。
-     */
-    if ((local_map_max - local_map_min).norm() < 1e-6)
-    {
-        local_map_center = pos_lidar;
-
-        local_map_min =
-            local_map_center -
-            Eigen::Vector3d(cube_len / 2.0, cube_len / 2.0, cube_len / 2.0);
-
-        local_map_max =
-            local_map_center +
-            Eigen::Vector3d(cube_len / 2.0, cube_len / 2.0, cube_len / 2.0);
-    }
-
-    const Eigen::Vector3d old_center = local_map_center;
-    const Eigen::Vector3d old_min = local_map_min;
-    const Eigen::Vector3d old_max = local_map_max;
-
-    Eigen::Vector3d new_center = old_center;
-
+    float dist_to_map_edge[3][2];
     bool need_move = false;
-
-    // 与官方 FAST-LIO2 一致，根据 cube 和探测距离计算每次移动距离。
-    const double move_dist =
-        std::max(
-            (cube_len - 2.0 * move_threshold * det_range) * 0.5 * 0.9,
-            det_range * (move_threshold - 1.0));
-    const double edge_threshold = move_threshold * det_range;
-
-    for (int axis = 0; axis < 3; ++axis)
-    {
-        const double dist_to_min =
-            pos_lidar(axis) - local_map_min(axis);
-
-        const double dist_to_max =
-            local_map_max(axis) - pos_lidar(axis);
-
-        if (dist_to_min <= edge_threshold)
-        {
-            new_center(axis) -= move_dist;
-            need_move = true;
-        }
-        else if (dist_to_max <= edge_threshold)
-        {
-            new_center(axis) += move_dist;
-            need_move = true;
+    for (int i = 0; i < 3; i++){
+        dist_to_map_edge[i][0] = fabs(pos_LiD(i) - LocalMap_Points.vertex_min[i]);
+        dist_to_map_edge[i][1] = fabs(pos_LiD(i) - LocalMap_Points.vertex_max[i]);
+        if (dist_to_map_edge[i][0] <= move_threshold * det_range || dist_to_map_edge[i][1] <= move_threshold * det_range) need_move = true;
+    }
+    if (!need_move) return;
+    BoxPointType New_LocalMap_Points, tmp_boxpoints;
+    New_LocalMap_Points = LocalMap_Points;
+    float mov_dist = max((cube_len - 2.0 * move_threshold * det_range) * 0.5 * 0.9, double(det_range * (move_threshold -1)));
+    for (int i = 0; i < 3; i++){
+        tmp_boxpoints = LocalMap_Points;
+        if (dist_to_map_edge[i][0] <= move_threshold * det_range){
+            New_LocalMap_Points.vertex_max[i] -= mov_dist;
+            New_LocalMap_Points.vertex_min[i] -= mov_dist;
+            tmp_boxpoints.vertex_min[i] = LocalMap_Points.vertex_max[i] - mov_dist;
+            cub_needrm.push_back(tmp_boxpoints);
+        } else if (dist_to_map_edge[i][1] <= move_threshold * det_range){
+            New_LocalMap_Points.vertex_max[i] += mov_dist;
+            New_LocalMap_Points.vertex_min[i] += mov_dist;
+            tmp_boxpoints.vertex_max[i] = LocalMap_Points.vertex_min[i] + mov_dist;
+            cub_needrm.push_back(tmp_boxpoints);
         }
     }
+    LocalMap_Points = New_LocalMap_Points;
 
-    if (!need_move)
-    {
-        return;
-    }
+    p_map->collectRemovedPoints();
 
-    /**
-     * 根据新中心计算新的局部地图 cube。
-     */
-    const Eigen::Vector3d new_min =
-        new_center -
-        Eigen::Vector3d(cube_len / 2.0, cube_len / 2.0, cube_len / 2.0);
+    if(cub_needrm.size() > 0) p_map->Delete_Point_Boxes(cub_needrm);
 
-    const Eigen::Vector3d new_max =
-        new_center +
-        Eigen::Vector3d(cube_len / 2.0, cube_len / 2.0, cube_len / 2.0);
-
-    /**
-     * 生成需要删除的 box。
-     *
-     * 思路：
-     *   旧 cube 移动到新 cube 后，旧 cube 中不再属于新 cube 的区域应该删除。
-     *
-     * 对每个轴：
-     *   - 如果新 cube 向正方向移动：
-     *       删除旧 cube 负方向留下的 slab；
-     *   - 如果新 cube 向负方向移动：
-     *       删除旧 cube 正方向留下的 slab。
-     *
-     * 这些 slab 就是 FAST-LIO2 中需要传给 Delete_Point_Boxes() 的区域。
-     */
-    std::vector<BoxPointType> boxes_to_delete;
-
-    for (int axis = 0; axis < 3; ++axis)
-    {
-        if (new_min(axis) > old_min(axis))
-        {
-            /**
-             * 局部地图沿该轴正方向移动。
-             * 旧 cube 的低端区域 [old_min, new_min] 不再需要。
-             */
-            BoxPointType box;
-
-            for (int i = 0; i < 3; ++i)
-            {
-                box.vertex_min[i] = static_cast<float>(old_min(i));
-                box.vertex_max[i] = static_cast<float>(old_max(i));
-            }
-            box.vertex_max[axis] = static_cast<float>(new_min(axis));
-
-            boxes_to_delete.push_back(box);
-        }
-        else if (new_max(axis) < old_max(axis))
-        {
-            /**
-             * 局部地图沿该轴负方向移动。
-             * 旧 cube 的高端区域 [new_max, old_max] 不再需要。
-             */
-            BoxPointType box;
-
-            for (int i = 0; i < 3; ++i)
-            {
-                box.vertex_min[i] = static_cast<float>(old_min(i));
-                box.vertex_max[i] = static_cast<float>(old_max(i));
-            }
-            box.vertex_min[axis] = static_cast<float>(new_max(axis));
-
-            boxes_to_delete.push_back(box);
-        }
-    }
-
-    /**
-     * 更新当前局部地图范围。
-     */
-    local_map_center = new_center;
-    local_map_min = new_min;
-    local_map_max = new_max;
-
-    int deleted_points = 0;
-
-    if (local_map_delete_enable && p_map != nullptr)
-    {
-        deleted_points =
-            p_map->Delete_Point_Boxes(boxes_to_delete);
-    }
-
-    std::cout << "[LocalMap] moved. "
-              << "old_center=" << old_center.transpose()
-              << ", new_center=" << local_map_center.transpose()
-              << ", delete_boxes=" << boxes_to_delete.size()
-              << ", deleted_points=" << deleted_points
-              << ", map_size=" << p_map->size()
-              << std::endl;
 }
 
 
@@ -2091,6 +1951,18 @@ void map_incremental()
     {
         return;
     }
+    // Adaptive-only quality gate, after the shared estimator has completed.
+    if (adaptive_map_enable && effct_feat_num < scan_match_min_effective_points)
+    {
+        last_map_add_num = 0;
+        // Preserve the existing insertion gate and window history. Record the
+        // current pose/static diagnostics even when no map update is performed.
+        const bool frame_degenerate = is_current_frame_degenerate();
+        write_runtime_log_row(frame_degenerate,
+                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                              0, 0, true);
+        return;
+    }
 
     feats_down_world->clear();
     feats_down_world->resize(feats_down_body->size());
@@ -2111,6 +1983,25 @@ void map_incremental()
     bool frame_degenerate = is_current_frame_degenerate();
     update_degeneracy_window(frame_degenerate);
 
+    // C3 recovery mode only relaxes invalid_quality in the low-effective range.
+    // The earlier whole-frame gate means every frame reaching here already has
+    // effct_feat_num >= scan_match_min_effective_points (normally 20).
+    const bool invalid_quality_relax_candidate =
+        adaptive_map_enable &&
+        adaptive_invalid_quality_filter_enable &&
+        adaptive_invalid_quality_low_effective_relax_enable &&
+        frame_degenerate &&
+        effct_feat_num < adaptive_min_effective_points;
+    const bool invalid_quality_turn_guard_active =
+        invalid_quality_relax_candidate &&
+        adaptive_invalid_quality_turn_guard_enable &&
+        adaptive_window_enable &&
+        degeneracy_window_ready &&
+        window_yaw_change > adaptive_window_max_yaw_change;
+    const bool invalid_quality_relax_active =
+        invalid_quality_relax_candidate &&
+        !invalid_quality_turn_guard_active;
+
     int rejected_num = 0;
     int voxel_rejected_num = 0;
     int quality_rejected_num = 0;
@@ -2119,6 +2010,10 @@ void map_incremental()
     int persistent_quota_rejected_num = 0;
     int novel_accepted_num = 0;
     int novel_rejected_num = 0;
+    int range_near_rejected_num = 0;
+    int range_far_rejected_num = 0;
+    int invalid_quality_relaxed_num = 0;
+    int invalid_quality_turn_guard_rejected_num = 0;
     // 仅在当前帧内统计各法向方向已接纳的点数，防止单一方向约束大量写入地图。
     std::unordered_map<int, int> normal_bin_counts;
     int persistent_insert_accepted_num = 0;
@@ -2202,7 +2097,7 @@ void map_incremental()
             nearest_points = &nearest_points_cache[i];
         }
 
-        if (nearest_points != nullptr)
+        if (nearest_points != nullptr && flg_EKF_inited)
         {
             PointType mid_point;
             mid_point.x =
@@ -2230,10 +2125,10 @@ void map_incremental()
             else
             {
                 for (int j = 0;
-                     j < nearest_search_num &&
-                     j < static_cast<int>(nearest_points->size());
+                     j < nearest_search_num;
                      ++j)
                 {
+                    if (nearest_points->size() < 5) break;
                     if (pointDistanceSquared((*nearest_points)[j], mid_point) <
                         point_dist_to_voxel_center)
                     {
@@ -2263,7 +2158,13 @@ void map_incremental()
                 persistent_insert_accepted_num,
                 persistent_insert_quota,
                 novel_accepted_num,
-                novel_rejected_num);
+                novel_rejected_num,
+                range_near_rejected_num,
+                range_far_rejected_num,
+                invalid_quality_relax_active,
+                invalid_quality_relaxed_num,
+                invalid_quality_turn_guard_active,
+                invalid_quality_turn_guard_rejected_num);
 
         if (!allow_insert)
         {
@@ -2296,6 +2197,9 @@ void map_incremental()
     total_direction_rejected += direction_rejected_num;
     total_persistent_quota_rejected += persistent_quota_rejected_num;
     total_voxel_rejected += voxel_rejected_num;
+    total_invalid_quality_relaxed += invalid_quality_relaxed_num;
+    total_invalid_quality_turn_guard_rejected +=
+        invalid_quality_turn_guard_rejected_num;
 
     // 所有本帧和累计统计更新完成后再记录，保证 CSV 中各字段属于同一帧状态。
     write_runtime_log_row(
@@ -2310,7 +2214,14 @@ void map_incremental()
         novel_accepted_num,
         novel_rejected_num,
         voxel_rejected_num,
-        rejected_num);
+        rejected_num,
+        range_near_rejected_num,
+        range_far_rejected_num,
+        false,
+        invalid_quality_relaxed_num,
+        invalid_quality_relax_active,
+        invalid_quality_turn_guard_active,
+        invalid_quality_turn_guard_rejected_num);
 
     const bool degenerate_state_changed =
         adaptive_map_enable &&
@@ -2465,8 +2376,7 @@ public:
         this->declare_parameter<double>("mapping.acc_cov", 0.1);
         this->declare_parameter<double>("mapping.b_gyr_cov", 0.0001);
         this->declare_parameter<double>("mapping.b_acc_cov", 0.0001);
-        this->declare_parameter<int>("mapping.imu_init_num", 200);
-        this->declare_parameter<bool>("mapping.scan_end_use_last_point", false);
+        this->declare_parameter<int>("mapping.imu_init_num", 10);
         this->declare_parameter<bool>("mapping.extrinsic_est_en", false);
 
         this->declare_parameter<int>("mapping.map_init_min_points", 6);
@@ -2514,6 +2424,9 @@ public:
         // 退化帧内地图未知区域 novel points 的帧级入图上限。
         this->declare_parameter<int>("adaptive_map.max_novel_points_per_frame", 50);
         this->declare_parameter<bool>("adaptive_map.transient_novel_quota_enable", false);
+        this->declare_parameter<bool>("adaptive_map.invalid_quality_filter_enable", true);
+        this->declare_parameter<bool>("adaptive_map.invalid_quality_low_effective_relax_enable", false);
+        this->declare_parameter<bool>("adaptive_map.invalid_quality_turn_guard_enable", false);
 
         // 是否启用动态滑动窗口判断；关闭时只使用单帧静态退化判断。
         this->declare_parameter<bool>("adaptive_window.enable", true);
@@ -2596,6 +2509,9 @@ public:
         this->get_parameter("adaptive_map.max_points_per_normal_bin", adaptive_max_points_per_normal_bin);
         this->get_parameter("adaptive_map.max_novel_points_per_frame", adaptive_max_novel_points_per_frame);
         this->get_parameter("adaptive_map.transient_novel_quota_enable", adaptive_transient_novel_quota_enable);
+        this->get_parameter("adaptive_map.invalid_quality_filter_enable", adaptive_invalid_quality_filter_enable);
+        this->get_parameter("adaptive_map.invalid_quality_low_effective_relax_enable", adaptive_invalid_quality_low_effective_relax_enable);
+        this->get_parameter("adaptive_map.invalid_quality_turn_guard_enable", adaptive_invalid_quality_turn_guard_enable);
 
         // ===================== idea 模块参数读取：adaptive_window =====================
         //
@@ -2647,12 +2563,11 @@ public:
         this->get_parameter("mapping.b_gyr_cov", b_gyr_cov);
         this->get_parameter("mapping.b_acc_cov", b_acc_cov);
         this->get_parameter("mapping.imu_init_num", imu_init_num);
-        this->get_parameter("mapping.scan_end_use_last_point", scan_end_use_last_point);
         this->get_parameter("mapping.extrinsic_est_en", extrinsic_est_en);
 
         this->get_parameter("mapping.map_init_min_points", map_init_min_points);
         this->get_parameter("mapping.cube_len", cube_len);
-        this->get_parameter("mapping.det_range", det_range);
+        det_range = static_cast<float>(this->get_parameter("mapping.det_range").as_double());
         this->get_parameter("mapping.move_threshold", move_threshold);
         this->get_parameter("mapping.local_map_enable", local_map_enable);
         this->get_parameter("mapping.local_map_delete_enable", local_map_delete_enable);
@@ -2672,7 +2587,7 @@ public:
         }
 
         if (extrinsic_R_vec.size() == 9)
-        {       
+        {
             extrinsic_R << extrinsic_R_vec[0], extrinsic_R_vec[1], extrinsic_R_vec[2],
                         extrinsic_R_vec[3], extrinsic_R_vec[4], extrinsic_R_vec[5],
                         extrinsic_R_vec[6], extrinsic_R_vec[7], extrinsic_R_vec[8];
@@ -2684,14 +2599,22 @@ public:
 
         // 把外参写入 IMU 处理模块的状态中。
         // IMU 模块和 IKFoM 使用相同外参初值。
-        p_imu->setExtrinsic(extrinsic_R, extrinsic_T);        
-        p_imu->setNoiseCovariances(
-            gyr_cov,
-            acc_cov,
-            b_gyr_cov,
-            b_acc_cov);
-        p_imu->setInitializationSampleCount(imu_init_num);
+        p_imu->set_extrinsic(extrinsic_T, extrinsic_R);
+        p_imu->set_gyr_cov(Eigen::Vector3d::Constant(gyr_cov));
+        p_imu->set_acc_cov(Eigen::Vector3d::Constant(acc_cov));
+        p_imu->set_gyr_bias_cov(Eigen::Vector3d::Constant(b_gyr_cov));
+        p_imu->set_acc_bias_cov(Eigen::Vector3d::Constant(b_acc_cov));
+        // Reject legacy settings rather than silently running a different base algorithm.
+        if (imu_init_num != 10 ||
+            nearest_search_num != 5 || nearest_sq_dist_threshold != 5.0 ||
+            plane_residual_threshold != 0.1 || effective_score_threshold != 0.9 ||
+            laser_point_cov != 0.001 || map_init_min_points != 6 ||
+            move_threshold != 1.5 || !local_map_enable || !local_map_delete_enable)
+            throw std::invalid_argument("FAST-LIO2 shared core requires imu_init_num=10, "
+                "nearest=5/dist=5, plane=0.1/score=0.9, "
+                "laser_cov=0.001, map_init=6, move_threshold=1.5, local_map_enable/delete=true");
         setInitialExtrinsicToIkfom(extrinsic_R, extrinsic_T);
+        std::fill(ikfom_epsi, ikfom_epsi + 23, 0.001);
         kf.init_dyn_share(
             get_f,
             df_dx,
@@ -2699,9 +2622,10 @@ public:
             h_share_model,
             scan_match_max_iteration,
             ikfom_epsi);
-        
+
         p_map->setFilterSizeMap(filter_size_map);
 
+        std::cout << "[Core] fastlio2_internal_v1; own executable, shared base, Adaptive insertion only" << std::endl;
         std::cout << "[Config] topics lidar=" << lid_topic
                   << ", imu=" << imu_topic
                   << "; lidar_type=" << p_pre->lidar_type
@@ -2713,7 +2637,6 @@ public:
                   << "/" << filter_size_map
                   << ", nearest=" << nearest_search_num
                   << ", imu_init_num=" << imu_init_num
-                  << ", scan_end_use_last_point=" << scan_end_use_last_point
                   << ", extrinsic_est=" << extrinsic_est_en
                   << ", local_map/delete=" << local_map_enable
                   << "/" << local_map_delete_enable
@@ -2725,6 +2648,11 @@ public:
                   << ", normal_ratio_min=" << adaptive_min_normal_eigen_ratio
                   << ", quality_min=" << adaptive_min_quality_score
                   << ", transient_novel_quota_enable=" << adaptive_transient_novel_quota_enable
+                  << ", invalid_quality_filter_enable=" << adaptive_invalid_quality_filter_enable
+                  << ", invalid_quality_low_effective_relax_enable="
+                  << adaptive_invalid_quality_low_effective_relax_enable
+                  << ", invalid_quality_turn_guard_enable="
+                  << adaptive_invalid_quality_turn_guard_enable
                   << ", max_novel_points_per_frame=" << adaptive_max_novel_points_per_frame
                   << std::endl;
         // 打印 idea 动态窗口参数：
@@ -2779,11 +2707,9 @@ public:
             std::cout << "Subscribe standard PointCloud2." << std::endl;
         }
 
-        auto imu_qos = rclcpp::SensorDataQoS();
-        imu_qos.keep_last(2000);
-        sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(imu_topic, imu_qos, imu_cbk);
+        sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(imu_topic, 10, imu_cbk);
 
-       
+
         pub_cloud_body_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body",10);
         pub_odom_ = this->create_publisher<nav_msgs::msg::Odometry>("/Odometry",10);
         pub_path_ = this->create_publisher<nav_msgs::msg::Path>("/path",10);
@@ -2800,7 +2726,7 @@ public:
 
 
         main_timer_ =
-            this->create_wall_timer(
+            rclcpp::create_timer(this, this->get_clock(),
                 std::chrono::milliseconds(10),
                 std::bind(
                     &AdaptiveLaserMappingNode::timer_callback,
@@ -2864,46 +2790,26 @@ private:
                       << std::endl;
         }
 
-        
-        // 1. 使用 IKFoM 完成 IMU 状态传播和点云去畸变。
+
+        // Both modes use FAST-LIO2's first-scan/init/crop/downsample order.
+        if (flg_first_scan)
+        {
+            first_lidar_time = Measures.lidar_beg_time;
+            p_imu->first_lidar_time = first_lidar_time;
+            flg_first_scan = false;
+            return;
+        }
         p_imu->Process(Measures, kf, feats_undistort);
         refreshStatePoint();
-
-        if (!p_imu->isInitialized())
-        {
-            publish_current_cloud_body(Measures);
-            publish_odometry(Measures);
-            publish_path(Measures);
-            publish_tf(Measures);
-            return;
-        }
-
-        // 2、当前帧下采样
-        downsample_current_scan(feats_undistort);
-
-        // 3. 如果地图还没有初始化，先用当前帧初始化地图。
-        //    地图初始化完成前，不做 scan-to-map 状态更新。
-        if (!flg_map_initialized)
-        {
-            bool init_success = init_map_with_current_scan();
-
-            publish_current_cloud_body(Measures);
-            publish_current_cloud_world(Measures);
-            publish_map(Measures);
-            publish_odometry(Measures);
-            publish_path(Measures);
-            publish_tf(Measures);
-
-            if (!init_success)
-            {
-                return;
-            }
-
-            return;
-        }
-
-        // 4、局部地图管理
+        if (!feats_undistort || feats_undistort->empty()) return;
+        flg_EKF_inited = Measures.lidar_beg_time - first_lidar_time >= 0.1;
         lasermap_fov_segment();
+        downsample_current_scan(feats_undistort);
+        if (!p_map->hasRoot())
+        {
+            init_map_with_current_scan();
+            return;
+        }
 
         // 与 FAST-LIO2 的基础保护一致：下采样点不足 5 个时，仅保留
         // 已完成的 IMU 传播，不进行匹配、增量入图及后续结果发布。
@@ -2923,32 +2829,9 @@ private:
 
         refreshStatePoint();
 
-        // adaptive_map 关闭时保持官方 FAST-LIO2 行为：只要观测模型存在有效点，
-        // 就使用滤波后的最终状态继续增量更新地图。额外的有效点数量门槛仅属于
-        // 自适应地图质量控制，不能改变基础复现路径。
-        const bool scan_update_success =
-            !adaptive_map_enable ||
-            effct_feat_num >= scan_match_min_effective_points;
-
-        if(!scan_update_success)
-        {
-            std::cout << "[Warning][ScanToMap] update failed: effective="
-                      << effct_feat_num
-                      << ", required=" << scan_match_min_effective_points
-                      << ", solve_H_ms=" << solve_H_time * 1000.0
-                      << ". Skip map insertion."
-                      << std::endl;
-
-            publish_current_cloud_body(Measures);
-            publish_current_cloud_world(Measures);
-            publish_map(Measures);
-            publish_odometry(Measures);
-            publish_path(Measures);
-            publish_tf(Measures);
-            return;
-        }
-        
-        // 3、地图增量更新
+        // Estimation and odometry are common; Adaptive may only change map insertion.
+        publish_odometry(Measures);
+        publish_tf(Measures);
         map_incremental();
 
         // 4、发布结果
@@ -2957,10 +2840,8 @@ private:
         // 发布当前帧全局点云
         publish_current_cloud_world(Measures);
         publish_map(Measures);
-        // 发布 IMU 预测的 odometry 和 path        
-        publish_odometry(Measures);
+        // 发布 IMU 预测的 odometry 和 path
         publish_path(Measures);
-        publish_tf(Measures);
         publish_degeneracy_info(Measures);
     }
 
@@ -3109,7 +2990,7 @@ private:
 
         Eigen::Quaterniond q(state_point.rot.toRotationMatrix());
         q.normalize();
-        
+
         pose.pose.orientation.x = q.x();
         pose.pose.orientation.y = q.y();
         pose.pose.orientation.z = q.z();

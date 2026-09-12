@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/ours_off/run01/evaluation_on_off_v1_runtime/ours_off.txt:
+--------------------------------------------------------------------------------
+Loaded 2316 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/ours_off/run01/evaluation_on_off_v1_runtime/ours_off.txt
+Loaded 625 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/ours_off/run01/evaluation_on_off_v1_runtime/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 623 of max. 625 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/ours_off/run01/evaluation_on_off_v1_runtime/ours_off.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/ours_off/run01/evaluation_on_off_v1_runtime/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.21929076 -0.97442404  0.04908509]
+ [ 0.97396441 -0.22159691 -0.04783457]
+ [ 0.05748826  0.03731745  0.99764849]]
+Translation of alignment:
+[ 342.25589253 -125.87489462  -33.74781122]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 623 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.817199
+      mean	0.253586
+    median	0.246390
+       min	0.023005
+      rmse	0.278645
+       sse	48.371523
+       std	0.115486
+
+
+Extracted RMSE: 0.278645
+Average RMSE: 0.278645
+ The minimum min_rmse is 0.278645
+

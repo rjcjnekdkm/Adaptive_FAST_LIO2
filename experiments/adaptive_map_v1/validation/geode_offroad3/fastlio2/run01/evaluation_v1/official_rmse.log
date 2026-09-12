@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad3/fastlio2/run01/evaluation_v1/fastlio2.txt:
+--------------------------------------------------------------------------------
+Loaded 3220 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad3/fastlio2/run01/evaluation_v1/fastlio2.txt
+Loaded 20351 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad3/fastlio2/run01/evaluation_v1/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 2888 of max. 3220 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad3/fastlio2/run01/evaluation_v1/fastlio2.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_offroad3/fastlio2/run01/evaluation_v1/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[ 0.58509983  0.80944253 -0.0496083 ]
+ [-0.80817045  0.58706492  0.0470671 ]
+ [ 0.0672214   0.01255301  0.99765911]]
+Translation of alignment:
+[-2539875.74587248  -865840.99216354   -85445.47053349]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 2888 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.412109
+      mean	0.078525
+    median	0.071494
+       min	0.005440
+      rmse	0.087475
+       sse	22.098418
+       std	0.038544
+
+
+Extracted RMSE: 0.087475
+Average RMSE: 0.087475
+ The minimum min_rmse is 0.087475
+

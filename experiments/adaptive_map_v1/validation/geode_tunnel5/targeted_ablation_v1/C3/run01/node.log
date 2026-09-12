@@ -1,0 +1,21 @@
+[INFO] [launch]: All log files can be found below /home/romi/.ros/log/2026-09-12-12-41-51-781306-DESKTOP-SNF0HF6-57554
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [adaptive_fastlio_mapping-1]: process started with pid [57556]
+[INFO] [rviz2-2]: process started with pid [57558]
+[adaptive_fastlio_mapping-1] Multi thread started 
+[adaptive_fastlio_mapping-1] [Core] fastlio2_internal_v1; own executable, shared base, Adaptive insertion only
+[adaptive_fastlio_mapping-1] [Config] topics lidar=/livox/lidar, imu=/imu/data; lidar_type=1, scan_line=6, point_filter=3, blind=2
+[adaptive_fastlio_mapping-1] [Config] voxel scan/map=0.5/0.5, nearest=5, imu_init_num=10, extrinsic_est=0, local_map/delete=1/1
+[adaptive_fastlio_mapping-1] [Config] adaptive_map=1, effective_min=200, effective_ratio_min=0.1, residual_max=0.15, normal_ratio_min=0.02, quality_min=0.92, transient_novel_quota_enable=0, invalid_quality_filter_enable=1, invalid_quality_low_effective_relax_enable=1, max_novel_points_per_frame=50
+[adaptive_fastlio_mapping-1] [Config] adaptive_window=1, size=20, persistent_ratio=0.5, normal_scale=1.5, residual_cv_max=0.5, min_motion=2, max_yaw=0.25, min_streak=2, condition_min=50, enter/exit=3/5, persistent_quota_scale(dir/novel)=0.5/0.5
+[adaptive_fastlio_mapping-1] [Config] runtime summary_interval_frames=1000000, sensor_debug=0, console_enable=0, csv_enable=1
+[adaptive_fastlio_mapping-1] [Config] extrinsic_T=0.049258  -0.0125 0.026946
+[adaptive_fastlio_mapping-1] [CSV] runtime statistics -> /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel5/targeted_ablation_v1/C3/run01/runtime.csv (overwrite)
+[adaptive_fastlio_mapping-1] Subscribe Livox CustomMsg.
+[adaptive_fastlio_mapping-1] Publish topics: /cloud_registered_body, /cloud_registered, /Laser_map, /ikdtree_map, /Odometry, /path, /adaptive_frontend/degeneracy_info
+[adaptive_fastlio_mapping-1] Adaptive FAST-LIO2 data input initialized.
+[rviz2-2] [INFO] [1789188113.844752210] [rviz2]: Stereo is NOT SUPPORTED
+[rviz2-2] [INFO] [1789188113.844850869] [rviz2]: OpenGl version: 4.2 (GLSL 4.2)
+[rviz2-2] [INFO] [1789188113.911790972] [rviz2]: Stereo is NOT SUPPORTED
+[adaptive_fastlio_mapping-1] IMU Initial Done
+[adaptive_fastlio_mapping-1] [MapInit] initialized. points=1248, map_size=1248

@@ -1,0 +1,36 @@
+{
+  "rows": 2228,
+  "switch": [
+    "legacy"
+  ],
+  "start": "1706585909.972931147",
+  "end": "1706586137.772913218",
+  "received": null,
+  "synchronized": null,
+  "modes": {
+    "0": {
+      "frames": 2136,
+      "quality_rejected": 19208,
+      "invalid_quality_rejected": 0,
+      "direction_rejected": 0,
+      "novel_rejected": 0,
+      "map_added": 84808
+    },
+    "1": {
+      "frames": 92,
+      "quality_rejected": 989,
+      "invalid_quality_rejected": 5613,
+      "direction_rejected": 0,
+      "novel_rejected": 2,
+      "map_added": 617
+    },
+    "2": {
+      "frames": 0,
+      "quality_rejected": 0,
+      "invalid_quality_rejected": 0,
+      "direction_rejected": 0,
+      "novel_rejected": 0,
+      "map_added": 0
+    }
+  }
+}

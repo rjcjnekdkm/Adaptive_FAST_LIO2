@@ -1,0 +1,18 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/geode_tunnel5/fastlio2/run01/runtime.csv",
+  "source_sha256": "bd14efe983b3deefe4b9681b83f0aac0924809e1b711d27407120d18869f21d7",
+  "gt": "bag/GEODE/Tunneling_tunnel_gamma/groudtruth/Tunneling_tunnel5.txt",
+  "gt_sha256": "baf8488c67fe80891c4cd09bd7484c095fda3c2322a1f2bd639e30ad4612e6a3",
+  "stamp": "Odometry.header.stamp; current source uses lidar_end_time",
+  "runtime_source_revision": "not captured at run time; do not infer from current HEAD",
+  "rows": 2295,
+  "duration_s": 231.50134921073914,
+  "max_gap_s": 0.9928956031799316,
+  "protocol": "GEODE original local conversion + rmse.py",
+  "converter_sha256": "cc8fd2ca405f2dfa662fe1e8a2b665a76c90017edfadc6f62547d1f669dc4433",
+  "scorer_sha256": "2b0db56c90651512bd1f9f01a1772a2390b89b71f86b676e95f5c1b2ed3e38b5",
+  "time_offset_s": 0.1,
+  "offset_applies_to": "GT (second evo input)",
+  "offset_basis": "previous user-specified protocol; not an official mandated offset",
+  "ate_rmse_m": 9.110966
+}

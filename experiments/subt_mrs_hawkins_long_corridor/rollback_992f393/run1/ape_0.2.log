@@ -1,0 +1,35 @@
+--------------------------------------------------------------------------------
+Loaded 1385 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/subt_mrs_hawkins_long_corridor/rollback_992f393/run1/ground_truth.tum
+Loaded 2583 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/subt_mrs_hawkins_long_corridor/rollback_992f393/run1/frontend_end.tum
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 1371 of max. 1385 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/subt_mrs_hawkins_long_corridor/rollback_992f393/run1/ground_truth.tum
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/subt_mrs_hawkins_long_corridor/rollback_992f393/run1/frontend_end.tum
+..with max. time diff.: 0.2 (s) and time offset: 0.0 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[ 0.99652062  0.06804615  0.04812877]
+ [-0.06819573  0.99767088  0.00147088]
+ [-0.04791658 -0.00474794  0.99884006]]
+Translation of alignment:
+[-1.3713771   0.89121548  0.12034994]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 1371 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	3.294909
+      mean	1.200452
+    median	0.846799
+       min	0.127520
+      rmse	1.446574
+       sse	2868.923272
+       std	0.807150
+
+--------------------------------------------------------------------------------
+Saving results to /home/romi/Adaptive_FAST_LIO2/experiments/subt_mrs_hawkins_long_corridor/rollback_992f393/run1/ape_0.2.zip...

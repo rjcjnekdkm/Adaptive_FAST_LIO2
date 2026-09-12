@@ -1,0 +1,42 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/fastlio2_local_comparison/rmse/fastlio2_old_end.txt:
+--------------------------------------------------------------------------------
+Loaded 2584 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/fastlio2_local_comparison/rmse/fastlio2_old_end.txt
+Loaded 618 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/fastlio2_local_comparison/rmse/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 611 of max. 618 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/fastlio2_local_comparison/rmse/fastlio2_old_end.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/fastlio2_local_comparison/rmse/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.65974485  0.75140489  0.01128803]
+ [-0.75030524 -0.65947371  0.04622205]
+ [ 0.04217564  0.02202529  0.99886741]]
+Translation of alignment:
+[-90.98614958 209.95247304 -19.64767336]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 611 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	8.571791
+      mean	6.864516
+    median	7.014332
+       min	0.936097
+      rmse	6.938485
+       sse	29415.111681
+       std	1.010439
+
+
+Extracted RMSE: 6.938485
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/fastlio2_local_comparison/rmse/fastlio2_old_end_rmse_output.txt:
+--------------------------------------------------------------------------------
+[ERROR] TUM trajectory files must have 8 entries per row and no trailing delimiter at the end of the rows (space)
+
+RMSE value not found for /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel2/stage2_final/fastlio2_local_comparison/rmse/fastlio2_old_end_rmse_output.txt
+Average RMSE: 3.4692425

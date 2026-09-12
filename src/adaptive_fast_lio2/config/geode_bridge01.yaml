@@ -29,8 +29,7 @@ adaptive_fastlio_mapping:
       acc_cov: 0.1
       b_gyr_cov: 0.0001
       b_acc_cov: 0.0001
-      # imu_init_num: 100  # 上一版：约 1 s（GEODE IMU 约 100 Hz）。
-      imu_init_num: 400    # 当前测试：约 4 s，使用更多静止 IMU 样本估计重力与零偏。
+      imu_init_num: 10  # Shared FAST-LIO2 MAX_INI_COUNT; legacy values live in checkpoint 7a05c9a.
       filter_size_surf: 0.5
       filter_size_map: 0.5
 

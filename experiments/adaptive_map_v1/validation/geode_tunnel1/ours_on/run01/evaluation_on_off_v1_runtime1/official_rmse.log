@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel1/ours_on/run01/evaluation_on_off_v1_runtime1/ours_on.txt:
+--------------------------------------------------------------------------------
+Loaded 2085 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel1/ours_on/run01/evaluation_on_off_v1_runtime1/ours_on.txt
+Loaded 435 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel1/ours_on/run01/evaluation_on_off_v1_runtime1/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 435 of max. 435 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel1/ours_on/run01/evaluation_on_off_v1_runtime1/ours_on.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel1/ours_on/run01/evaluation_on_off_v1_runtime1/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.49315969  0.86976876  0.01719954]
+ [-0.86346303 -0.49180084  0.11208715]
+ [ 0.10594865  0.04042569  0.99354952]]
+Translation of alignment:
+[-126.7285165   184.59594222  -29.73746374]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 435 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.734599
+      mean	0.364808
+    median	0.342663
+       min	0.191756
+      rmse	0.374297
+       sse	60.942789
+       std	0.083746
+
+
+Extracted RMSE: 0.374297
+Average RMSE: 0.374297
+ The minimum min_rmse is 0.374297
+

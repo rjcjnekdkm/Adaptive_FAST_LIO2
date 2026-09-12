@@ -1,0 +1,38 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/geode_offroad_gamma/offroad1/stage2_final/ours_wo_adaptive/official_end_offset_0p1/rmse/ours_wo_adaptive_end.txt:
+--------------------------------------------------------------------------------
+Loaded 4028 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_offroad_gamma/offroad1/stage2_final/ours_wo_adaptive/official_end_offset_0p1/rmse/ours_wo_adaptive_end.txt
+Loaded 42626 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_offroad_gamma/offroad1/stage2_final/ours_wo_adaptive/official_end_offset_0p1/rmse/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 4028 of max. 4028 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/geode_offroad_gamma/offroad1/stage2_final/ours_wo_adaptive/official_end_offset_0p1/rmse/ours_wo_adaptive_end.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/geode_offroad_gamma/offroad1/stage2_final/ours_wo_adaptive/official_end_offset_0p1/rmse/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[ 0.18906965  0.98191523 -0.00975483]
+ [-0.98183388  0.18919684  0.01438021]
+ [ 0.01596573  0.00685876  0.99984902]]
+Translation of alignment:
+[-2668625.38576293   292351.71061994   -30239.78671726]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 4028 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	0.313135
+      mean	0.066541
+    median	0.059677
+       min	0.003136
+      rmse	0.075695
+       sse	23.079098
+       std	0.036082
+
+
+Extracted RMSE: 0.075695
+Average RMSE: 0.075695
+ The minimum min_rmse is 0.075695

@@ -1,0 +1,38 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel3/ours_transition_guard_v2/official_eval/ours_transition_guard_v2.txt:
+--------------------------------------------------------------------------------
+Loaded 2461 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel3/ours_transition_guard_v2/official_eval/ours_transition_guard_v2.txt
+Loaded 478 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel3/ours_transition_guard_v2/official_eval/leica_ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 476 of max. 478 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel3/ours_transition_guard_v2/official_eval/ours_transition_guard_v2.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/geode_tunneling_tunnel_gamma/tunnel3/ours_transition_guard_v2/official_eval/leica_ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.0 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.46128621  0.88721943 -0.00753101]
+ [-0.85083223 -0.43992887  0.28731012]
+ [ 0.25159401  0.13893982  0.95780801]]
+Translation of alignment:
+[-132.90698736  174.44857974  -65.21810081]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 476 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	6.893709
+      mean	3.372313
+    median	3.060354
+       min	1.557916
+      rmse	3.629350
+       sse	6269.959039
+       std	1.341523
+
+
+Extracted RMSE: 3.62935
+Average RMSE: 3.62935
+ The minimum min_rmse is 3.62935

@@ -1,0 +1,9 @@
+time,current_id,candidate_id,scan_context_distance,icp_fitness,threshold,trans_error,yaw_error,degenerate_pair,accepted,target_points,source_points,reverse_icp_fitness,reciprocal_translation_error,reciprocal_yaw_error,observability_correspondences,observability_condition_number,observability_min_singular_value,reason
+1624182314.424500704,532,431,0.154281030,0.463464972,0.300000000,nan,nan,0,0,35258,2615,nan,nan,nan,0,nan,nan,fitness_reject
+1624182314.724671125,533,431,0.148429569,0.400308896,0.300000000,nan,nan,0,0,35258,2517,nan,nan,nan,0,nan,nan,fitness_reject
+1624182329.723937511,535,430,0.162963645,0.383698667,0.300000000,nan,nan,0,0,36128,2449,nan,nan,nan,0,nan,nan,fitness_reject
+1624182331.023905277,537,435,0.167351656,0.737149002,0.300000000,nan,nan,0,0,33216,2522,nan,nan,nan,0,nan,nan,fitness_reject
+1624182331.524094105,538,437,0.170621732,1.320565433,0.300000000,nan,nan,0,0,31957,2214,nan,nan,nan,0,nan,nan,fitness_reject
+1624182332.323876143,540,438,0.144996043,0.458312215,0.300000000,nan,nan,0,0,30913,2109,nan,nan,nan,0,nan,nan,fitness_reject
+1624182332.723885536,541,440,0.148585902,0.933552273,0.300000000,nan,nan,0,0,29849,2057,nan,nan,nan,0,nan,nan,fitness_reject
+1624182333.024018288,542,440,0.168461617,1.081296201,0.300000000,nan,nan,0,0,29849,1804,nan,nan,nan,0,nan,nan,fitness_reject

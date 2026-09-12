@@ -1,0 +1,19 @@
+[INFO] [launch]: All log files can be found below /home/romi/.ros/log/2026-09-10-10-01-39-773302-DESKTOP-SNF0HF6-19362
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [adaptive_fastlio_mapping-1]: process started with pid [19363]
+[adaptive_fastlio_mapping-1] Multi thread started 
+[adaptive_fastlio_mapping-1] [Config] topics lidar=/os1_cloud_node1/points, imu=/imu/imu; lidar_type=3, scan_line=16, point_filter=3, blind=1
+[adaptive_fastlio_mapping-1] [Config] voxel scan/map=0.5/0.5, nearest=5, imu_init_num=200, scan_end_use_last_point=1, extrinsic_est=0, local_map/delete=1/1
+[adaptive_fastlio_mapping-1] [Config] adaptive_map=0, effective_min=200, effective_ratio_min=0.1, residual_max=0.15, normal_ratio_min=0.02, quality_min=0.92, transient_novel_quota_enable=0, max_novel_points_per_frame=50
+[adaptive_fastlio_mapping-1] [Config] adaptive_window=0, size=20, persistent_ratio=0.5, normal_scale=1.5, residual_cv_max=0.5, min_motion=2, max_yaw=0.25, min_streak=2, condition_min=50, enter/exit=3/5, persistent_quota_scale(dir/novel)=0.5/0.5
+[adaptive_fastlio_mapping-1] [Config] runtime summary_interval_frames=1000000, sensor_debug=0, console_enable=0, csv_enable=1
+[adaptive_fastlio_mapping-1] [Config] extrinsic_T=-0.05     0 0.055
+[adaptive_fastlio_mapping-1] [CSV] runtime statistics -> /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/ntu_spms3/scan_end_ab/last/run01/runtime.csv (overwrite)
+[adaptive_fastlio_mapping-1] Subscribe standard PointCloud2.
+[adaptive_fastlio_mapping-1] Publish topics: /cloud_registered_body, /cloud_registered, /Laser_map, /ikdtree_map, /Odometry, /path, /adaptive_frontend/degeneracy_info
+[adaptive_fastlio_mapping-1] Adaptive FAST-LIO2 data input initialized.
+[adaptive_fastlio_mapping-1] [IMU Init] collecting: 97 / 200
+[adaptive_fastlio_mapping-1] [IMU Init] collecting: 134 / 200
+[adaptive_fastlio_mapping-1] [IMU Init] collecting: 174 / 200
+[adaptive_fastlio_mapping-1] [IMU Init] finished. bg=0.00706208 0.00308473 0.00146007, mean_acc= 0.379329 -0.262771  -9.54635, mean_acc_norm=9.5575, grav=-0.38935 0.269714  9.79856, acc_scale=1.02642
+[adaptive_fastlio_mapping-1] [MapInit] initialized. points=2483, map_size=2483, center=-0.05     0 0.055
