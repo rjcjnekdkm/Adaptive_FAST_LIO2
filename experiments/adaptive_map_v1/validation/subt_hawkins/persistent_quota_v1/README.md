@@ -2,7 +2,8 @@
 
 - Candidate code commit: `06d18b9`
 - Bag: `/home/romi/Adaptive_FAST_LIO2/bag/SubT_MRS/SubT_points_ros2`
-- Playback: `--clock --rate 1.0`
+- Playback: `--clock --rate 1.0 --start-offset 1.0`. Skipping the first second is
+  mandatory and matches the historical SubT protocol.
 - Common controls: Adaptive Map on, adaptive window on, transient novel quota off,
   invalid-quality filter on, low-effective relaxation off, turn guard off, backend off, RViz off.
 - P0 changes only the Persistent total insertion quota to disabled (`scale=1.0`, `min=0`, `max=0`).
@@ -10,6 +11,8 @@
 - SubT remains at `adaptive_map.min_effective_points=120` because this is the fixed sparse 16-line LiDAR configuration.
 - Paired order: P0/run01, P1/run01, P0/run02, P1/run02, P0/run03, P1/run03.
 - Restart the launch process before every bag replay. Do not overwrite an existing run.
+- `P0/invalid_no_start_offset_run01` is excluded from all statistics because it was
+  played from offset 0 and diverged after violating the established SubT protocol.
 
 For each run, create its directory, launch the frontend with the matching config and
 runtime path, dump `/adaptive_fastlio_mapping` parameters while the node is alive,
