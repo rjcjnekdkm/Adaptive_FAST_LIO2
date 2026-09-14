@@ -231,6 +231,9 @@ bool adaptive_invalid_quality_low_effective_relax_enable = false;
 // R1: during a high-yaw degenerate turn, keep the normal invalid-quality
 // rejection instead of relaxing it. This only guards map insertion.
 bool adaptive_invalid_quality_turn_guard_enable = false;
+// Independent ablation switch for normal-direction bin selection. This does not
+// alter range, residual, quality, invalid-quality or count-control decisions.
+bool adaptive_directional_selection_enable = true;
 // F ablation: retain the single-frame range/quality rules, remove normal-direction
 // selection, and apply a fixed count budget only on degenerate frames.
 bool adaptive_equal_point_count_control_enable = false;
@@ -1274,6 +1277,11 @@ void write_runtime_log_row(
         invalid_quality_turn_guard_rejected_num;
     row.total_invalid_quality_turn_guard_rejected =
         total_invalid_quality_turn_guard_rejected;
+    row.directional_selection_enabled = adaptive_directional_selection_enable;
+    row.directional_selection_active =
+        adaptive_map_enable && frame_degenerate &&
+        adaptive_directional_selection_enable &&
+        !equal_point_count_control_active;
     row.equal_point_count_control_enabled =
         adaptive_equal_point_count_control_enable;
     row.equal_point_count_control_active = equal_point_count_control_active;
@@ -2062,6 +2070,7 @@ void map_incremental()
         // 不改 FAST-LIO2 的 ESIKF 滤波器结构。
         const bool persistent_sort =
             current_degeneracy_mode == DegeneracyMode::Persistent &&
+            adaptive_directional_selection_enable &&
             !equal_point_count_control_active;
         std::stable_sort(
             candidate_indices.begin(),
@@ -2187,7 +2196,8 @@ void map_incremental()
                 invalid_quality_relaxed_num,
                 invalid_quality_turn_guard_active,
                 invalid_quality_turn_guard_rejected_num,
-                !equal_point_count_control_active);
+                adaptive_directional_selection_enable &&
+                    !equal_point_count_control_active);
 
         if (!allow_insert)
         {
@@ -2471,6 +2481,7 @@ public:
         this->declare_parameter<bool>("adaptive_map.invalid_quality_filter_enable", true);
         this->declare_parameter<bool>("adaptive_map.invalid_quality_low_effective_relax_enable", false);
         this->declare_parameter<bool>("adaptive_map.invalid_quality_turn_guard_enable", false);
+        this->declare_parameter<bool>("adaptive_map.directional_selection_enable", true);
         this->declare_parameter<bool>("adaptive_map.equal_point_count_control_enable", false);
         this->declare_parameter<int>("adaptive_map.equal_point_count_per_degenerate_frame", 24);
 
@@ -2558,6 +2569,7 @@ public:
         this->get_parameter("adaptive_map.invalid_quality_filter_enable", adaptive_invalid_quality_filter_enable);
         this->get_parameter("adaptive_map.invalid_quality_low_effective_relax_enable", adaptive_invalid_quality_low_effective_relax_enable);
         this->get_parameter("adaptive_map.invalid_quality_turn_guard_enable", adaptive_invalid_quality_turn_guard_enable);
+        this->get_parameter("adaptive_map.directional_selection_enable", adaptive_directional_selection_enable);
         this->get_parameter("adaptive_map.equal_point_count_control_enable", adaptive_equal_point_count_control_enable);
         this->get_parameter("adaptive_map.equal_point_count_per_degenerate_frame", adaptive_equal_point_count_per_degenerate_frame);
         adaptive_equal_point_count_per_degenerate_frame =
@@ -2703,6 +2715,8 @@ public:
                   << adaptive_invalid_quality_low_effective_relax_enable
                   << ", invalid_quality_turn_guard_enable="
                   << adaptive_invalid_quality_turn_guard_enable
+                  << ", directional_selection_enable="
+                  << adaptive_directional_selection_enable
                   << ", equal_point_count_control_enable="
                   << adaptive_equal_point_count_control_enable
                   << ", equal_point_count_per_degenerate_frame="

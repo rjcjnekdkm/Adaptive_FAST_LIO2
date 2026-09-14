@@ -30,6 +30,7 @@ constexpr char kRuntimeCsvHeader[] =
     "invalid_quality_turn_guard_enabled,invalid_quality_turn_guard_active,"
     "invalid_quality_turn_guard_yaw_threshold,invalid_quality_turn_guard_rejected,"
     "total_invalid_quality_turn_guard_rejected,"
+    "directional_selection_enabled,directional_selection_active,"
     "equal_point_count_control_enabled,equal_point_count_control_active,"
     "equal_point_count_target,equal_point_count_rejected,"
     "total_equal_point_count_rejected";
@@ -198,6 +199,8 @@ void AdaptiveRuntimeLogger::write(const RuntimeLogRow &row)
           << row.invalid_quality_turn_guard_yaw_threshold << ","
           << row.invalid_quality_turn_guard_rejected << ","
           << row.total_invalid_quality_turn_guard_rejected << ","
+          << (row.directional_selection_enabled ? 1 : 0) << ","
+          << (row.directional_selection_active ? 1 : 0) << ","
           << (row.equal_point_count_control_enabled ? 1 : 0) << ","
           << (row.equal_point_count_control_active ? 1 : 0) << ","
           << row.equal_point_count_target << ","

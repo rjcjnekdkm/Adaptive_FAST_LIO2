@@ -126,6 +126,14 @@ class InternalCoreTests(unittest.TestCase):
         self.assertLess(insertion.index('if (!allow_insert)'),
                         insertion.index('equal_point_count_accepted_num >='))
 
+    def test_directional_selection_has_independent_ablation_switch(self):
+        insertion = function(self.main, 'void map_incremental()')
+        allowance = function(self.main, 'bool allow_map_insert_point(')
+        self.assertIn('adaptive_directional_selection_enable', insertion)
+        self.assertIn('adaptive_directional_selection_enable &&\n                    !equal_point_count_control_active', insertion)
+        self.assertIn('frame_degenerate && has_quality && directional_selection_enable', allowance)
+        self.assertIn('adaptive_map.directional_selection_enable', self.main)
+
     def test_invalid_quality_turn_guard_boundary(self):
         insertion = function(self.main, 'void map_incremental()')
         self.assertIn('adaptive_invalid_quality_turn_guard_enable', insertion)
