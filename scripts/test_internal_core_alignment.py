@@ -112,7 +112,19 @@ class InternalCoreTests(unittest.TestCase):
         self.assertIn('adaptive_invalid_quality_filter_enable &&\n                !invalid_quality_relax_active', allowance)
         self.assertIn('invalid_quality_relaxed_num++;', allowance)
         self.assertLess(allowance.index('invalid_quality_relaxed_num++;'),
-                        allowance.index('if(frame_degenerate && has_quality)'))
+                        allowance.index('if(frame_degenerate && has_quality && directional_selection_enable)'))
+
+    def test_equal_point_count_control_boundary(self):
+        insertion = function(self.main, 'void map_incremental()')
+        allowance = function(self.main, 'bool allow_map_insert_point(')
+        self.assertIn('adaptive_equal_point_count_control_enable', insertion)
+        self.assertIn('frame_degenerate;', insertion)
+        self.assertIn('!equal_point_count_control_active', insertion)
+        self.assertIn('equal_point_count_accepted_num >=', insertion)
+        self.assertIn('adaptive_equal_point_count_per_degenerate_frame', insertion)
+        self.assertIn('frame_degenerate && has_quality && directional_selection_enable', allowance)
+        self.assertLess(insertion.index('if (!allow_insert)'),
+                        insertion.index('equal_point_count_accepted_num >='))
 
     def test_invalid_quality_turn_guard_boundary(self):
         insertion = function(self.main, 'void map_incremental()')

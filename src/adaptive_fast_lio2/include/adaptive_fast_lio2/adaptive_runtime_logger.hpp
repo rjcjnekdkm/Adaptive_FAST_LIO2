@@ -98,7 +98,7 @@ struct RuntimeLogRow
     double map_min_range = 0.0;
     double map_max_range = 0.0;
     int map_min_effective_points = 0;
-    std::string runtime_schema_revision = "map_diagnostics_v5";
+    std::string runtime_schema_revision = "map_diagnostics_v6";
     bool invalid_quality_filter_enabled = true;
     bool invalid_quality_low_effective_relax_enabled = false;
     bool invalid_quality_relax_active = false;
@@ -110,6 +110,11 @@ struct RuntimeLogRow
     double invalid_quality_turn_guard_yaw_threshold = 0.0;
     int invalid_quality_turn_guard_rejected = 0;
     std::uint64_t total_invalid_quality_turn_guard_rejected = 0;
+    bool equal_point_count_control_enabled = false;
+    bool equal_point_count_control_active = false;
+    int equal_point_count_target = 0;
+    int equal_point_count_rejected = 0;
+    std::uint64_t total_equal_point_count_rejected = 0;
 };
 
 /**

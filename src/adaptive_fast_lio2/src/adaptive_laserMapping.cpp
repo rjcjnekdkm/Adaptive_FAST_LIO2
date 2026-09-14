@@ -114,6 +114,7 @@ uint64_t total_persistent_quota_rejected = 0;
 uint64_t total_voxel_rejected = 0;
 uint64_t total_invalid_quality_relaxed = 0;
 uint64_t total_invalid_quality_turn_guard_rejected = 0;
+uint64_t total_equal_point_count_rejected = 0;
 size_t last_map_add_num = 0;
 
 // ===================== 全局参数 =====================
@@ -230,6 +231,10 @@ bool adaptive_invalid_quality_low_effective_relax_enable = false;
 // R1: during a high-yaw degenerate turn, keep the normal invalid-quality
 // rejection instead of relaxing it. This only guards map insertion.
 bool adaptive_invalid_quality_turn_guard_enable = false;
+// F ablation: retain the single-frame range/quality rules, remove normal-direction
+// selection, and apply a fixed count budget only on degenerate frames.
+bool adaptive_equal_point_count_control_enable = false;
+int adaptive_equal_point_count_per_degenerate_frame = 24;
 
 // ===================== 滑动窗口退化判断参数 =====================
 // 是否启用滑动窗口
@@ -1237,7 +1242,10 @@ void write_runtime_log_row(
     int invalid_quality_relaxed_num = 0,
     bool invalid_quality_relax_active = false,
     bool invalid_quality_turn_guard_active = false,
-    int invalid_quality_turn_guard_rejected_num = 0)
+    int invalid_quality_turn_guard_rejected_num = 0,
+    bool equal_point_count_control_active = false,
+    int equal_point_count_target = 0,
+    int equal_point_count_rejected_num = 0)
 {
     const size_t downsampled_points = feats_down_body->size();
     RuntimeLogRow row;
@@ -1266,6 +1274,12 @@ void write_runtime_log_row(
         invalid_quality_turn_guard_rejected_num;
     row.total_invalid_quality_turn_guard_rejected =
         total_invalid_quality_turn_guard_rejected;
+    row.equal_point_count_control_enabled =
+        adaptive_equal_point_count_control_enable;
+    row.equal_point_count_control_active = equal_point_count_control_active;
+    row.equal_point_count_target = equal_point_count_target;
+    row.equal_point_count_rejected = equal_point_count_rejected_num;
+    row.total_equal_point_count_rejected = total_equal_point_count_rejected;
 
     // 帧级状态与匹配质量指标。
     row.frame = map_update_count;
@@ -1367,7 +1381,8 @@ bool allow_map_insert_point(
     bool invalid_quality_relax_active,
     int &invalid_quality_relaxed_num,
     bool invalid_quality_turn_guard_active,
-    int &invalid_quality_turn_guard_rejected_num)
+    int &invalid_quality_turn_guard_rejected_num,
+    bool directional_selection_enable)
 {
     if(!adaptive_map_enable)
     {
@@ -1490,7 +1505,7 @@ bool allow_map_insert_point(
         }
     }
 
-    if(frame_degenerate && has_quality)
+    if(frame_degenerate && has_quality && directional_selection_enable)
     {
         const int bin = normal_direction_bin(map_point_normal[point_index]);
         // 退化帧中，对同一法向方向分箱的点设置上限。
@@ -2014,6 +2029,12 @@ void map_incremental()
     int range_far_rejected_num = 0;
     int invalid_quality_relaxed_num = 0;
     int invalid_quality_turn_guard_rejected_num = 0;
+    int equal_point_count_rejected_num = 0;
+    int equal_point_count_accepted_num = 0;
+    const bool equal_point_count_control_active =
+        adaptive_map_enable &&
+        adaptive_equal_point_count_control_enable &&
+        frame_degenerate;
     // 仅在当前帧内统计各法向方向已接纳的点数，防止单一方向约束大量写入地图。
     std::unordered_map<int, int> normal_bin_counts;
     int persistent_insert_accepted_num = 0;
@@ -2040,7 +2061,8 @@ void map_incremental()
         // 这样借鉴 localizability contribution 的思想，但仍然只作用于地图更新，
         // 不改 FAST-LIO2 的 ESIKF 滤波器结构。
         const bool persistent_sort =
-            current_degeneracy_mode == DegeneracyMode::Persistent;
+            current_degeneracy_mode == DegeneracyMode::Persistent &&
+            !equal_point_count_control_active;
         std::stable_sort(
             candidate_indices.begin(),
             candidate_indices.end(),
@@ -2164,12 +2186,29 @@ void map_incremental()
                 invalid_quality_relax_active,
                 invalid_quality_relaxed_num,
                 invalid_quality_turn_guard_active,
-                invalid_quality_turn_guard_rejected_num);
+                invalid_quality_turn_guard_rejected_num,
+                !equal_point_count_control_active);
 
         if (!allow_insert)
         {
             rejected_num++;
             continue;
+        }
+
+        // F count-only control: the reference D runs accepted on average about
+        // 24 points per degenerate frame. Keep the same range/quality gates but
+        // replace normal-bin selection with a predeclared count budget.
+        if (equal_point_count_control_active &&
+            equal_point_count_accepted_num >=
+                adaptive_equal_point_count_per_degenerate_frame)
+        {
+            equal_point_count_rejected_num++;
+            rejected_num++;
+            continue;
+        }
+        if (equal_point_count_control_active)
+        {
+            equal_point_count_accepted_num++;
         }
 
         if (no_need_downsample)
@@ -2200,6 +2239,7 @@ void map_incremental()
     total_invalid_quality_relaxed += invalid_quality_relaxed_num;
     total_invalid_quality_turn_guard_rejected +=
         invalid_quality_turn_guard_rejected_num;
+    total_equal_point_count_rejected += equal_point_count_rejected_num;
 
     // 所有本帧和累计统计更新完成后再记录，保证 CSV 中各字段属于同一帧状态。
     write_runtime_log_row(
@@ -2221,7 +2261,11 @@ void map_incremental()
         invalid_quality_relaxed_num,
         invalid_quality_relax_active,
         invalid_quality_turn_guard_active,
-        invalid_quality_turn_guard_rejected_num);
+        invalid_quality_turn_guard_rejected_num,
+        equal_point_count_control_active,
+        equal_point_count_control_active
+            ? adaptive_equal_point_count_per_degenerate_frame : 0,
+        equal_point_count_rejected_num);
 
     const bool degenerate_state_changed =
         adaptive_map_enable &&
@@ -2427,6 +2471,8 @@ public:
         this->declare_parameter<bool>("adaptive_map.invalid_quality_filter_enable", true);
         this->declare_parameter<bool>("adaptive_map.invalid_quality_low_effective_relax_enable", false);
         this->declare_parameter<bool>("adaptive_map.invalid_quality_turn_guard_enable", false);
+        this->declare_parameter<bool>("adaptive_map.equal_point_count_control_enable", false);
+        this->declare_parameter<int>("adaptive_map.equal_point_count_per_degenerate_frame", 24);
 
         // 是否启用动态滑动窗口判断；关闭时只使用单帧静态退化判断。
         this->declare_parameter<bool>("adaptive_window.enable", true);
@@ -2512,6 +2558,10 @@ public:
         this->get_parameter("adaptive_map.invalid_quality_filter_enable", adaptive_invalid_quality_filter_enable);
         this->get_parameter("adaptive_map.invalid_quality_low_effective_relax_enable", adaptive_invalid_quality_low_effective_relax_enable);
         this->get_parameter("adaptive_map.invalid_quality_turn_guard_enable", adaptive_invalid_quality_turn_guard_enable);
+        this->get_parameter("adaptive_map.equal_point_count_control_enable", adaptive_equal_point_count_control_enable);
+        this->get_parameter("adaptive_map.equal_point_count_per_degenerate_frame", adaptive_equal_point_count_per_degenerate_frame);
+        adaptive_equal_point_count_per_degenerate_frame =
+            std::max(1, adaptive_equal_point_count_per_degenerate_frame);
 
         // ===================== idea 模块参数读取：adaptive_window =====================
         //
@@ -2653,6 +2703,10 @@ public:
                   << adaptive_invalid_quality_low_effective_relax_enable
                   << ", invalid_quality_turn_guard_enable="
                   << adaptive_invalid_quality_turn_guard_enable
+                  << ", equal_point_count_control_enable="
+                  << adaptive_equal_point_count_control_enable
+                  << ", equal_point_count_per_degenerate_frame="
+                  << adaptive_equal_point_count_per_degenerate_frame
                   << ", max_novel_points_per_frame=" << adaptive_max_novel_points_per_frame
                   << std::endl;
         // 打印 idea 动态窗口参数：
