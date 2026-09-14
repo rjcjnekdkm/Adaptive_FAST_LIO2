@@ -1,0 +1,4 @@
+group,method,run01_ate_m,run02_ate_m,run03_ate_m,mean_ate_m,sample_std_m,median_ate_m
+A,FAST-LIO2,0.103886,0.103199,0.103125,0.103403,0.000420,0.103199
+B,Ours w/o Adaptive,0.110601,0.110601,0.110699,0.110634,0.000057,0.110601
+C,Quality/range candidate,0.105584,0.105584,0.105584,0.105584,0.000000,0.105584

@@ -10,6 +10,11 @@
 - Backend and RViz remain off. Replay at 1.0x with a mandatory 1-second start offset.
 - Run three independent restarts under F/run01, F/run02 and F/run03.
 
+The completed F24 runs are retained as a valid pilot. Post-run auditing found
+that 24 was a cap rather than an achieved count: degenerate-frame insertion was
+27.8% below D, although whole-run insertion differed by only 8.1%. See
+`analysis.md`; do not describe F24 as an exact per-degenerate-frame count match.
+
 Acceptance criteria in runtime CSV: equal-point-count control is enabled, it is
 active only on degenerate frames, its target is 24, and direction_rejected remains
 zero whenever the count control is active.

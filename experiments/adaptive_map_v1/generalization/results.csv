@@ -1,0 +1,7 @@
+sequence,scene,group,method,mean_ate_m,sample_std_m,relative_to_B_pct,relative_to_A_pct
+geode_tunnel4,tunnel,A,FAST-LIO2,0.129898,0.000089,-2.327,0.000
+geode_tunnel4,tunnel,B,Ours w/o Adaptive,0.132993,0.000000,0.000,2.383
+geode_tunnel4,tunnel,C,Quality/range candidate,0.131982,0.000000,-0.760,1.605
+geode_offroad2,offroad,A,FAST-LIO2,0.103403,0.000420,-6.535,0.000
+geode_offroad2,offroad,B,Ours w/o Adaptive,0.110634,0.000057,0.000,6.992
+geode_offroad2,offroad,C,Quality/range candidate,0.105584,0.000000,-4.564,2.109
