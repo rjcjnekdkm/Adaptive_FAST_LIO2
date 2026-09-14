@@ -34,10 +34,9 @@ with the current run directory.
 ## Runtime acceptance checks
 
 - All groups report runtime schema `map_diagnostics_v7`.
-- B: `adaptive_map_enabled=0`; all adaptive rejection counts remain zero.
-- C: `adaptive_map_enabled=1`, `directional_selection_enabled=0`, and
+- B: `adaptive_map=0`; all adaptive rejection counts remain zero.
+- C: `adaptive_map=1`, `directional_selection_enabled=0`, and
   `direction_rejected=0` for every row.
-- D: `adaptive_map_enabled=1`, `directional_selection_enabled=1`; direction
+- D: `adaptive_map=1`, `directional_selection_enabled=1`; direction
   selection may become active only on degenerate frames.
 - B/C/D: equal-point-count control remains disabled and the window mode remains off.
-

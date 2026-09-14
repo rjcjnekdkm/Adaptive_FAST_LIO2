@@ -134,6 +134,39 @@ class InternalCoreTests(unittest.TestCase):
         self.assertIn('frame_degenerate && has_quality && directional_selection_enable', allowance)
         self.assertIn('adaptive_map.directional_selection_enable', self.main)
 
+    def test_frozen_c_candidate_is_the_project_default(self):
+        launch = read(OURS / 'launch/adaptive_fast_lio2.launch.py')
+        config = yaml.safe_load(read(OURS / 'config/adaptive_fast_lio2.yaml'))
+        params = config['adaptive_fastlio_mapping']['ros__parameters']
+        self.assertIn('bool adaptive_directional_selection_enable = false;', self.main)
+        self.assertIn('bool adaptive_window_enable = false;', self.main)
+        self.assertIn(
+            'declare_parameter<bool>("adaptive_map.directional_selection_enable", false)',
+            self.main)
+        self.assertIn(
+            'declare_parameter<bool>("adaptive_window.enable", false)',
+            self.main)
+        window_start = launch.index(
+            'declare_adaptive_window_enable_cmd = DeclareLaunchArgument(')
+        window_declaration = launch[
+            window_start:launch.index('\n    )', window_start)]
+        self.assertIn('default_value="false"', window_declaration)
+        self.assertTrue(params['adaptive_map']['enable'])
+        self.assertFalse(params['adaptive_map']['directional_selection_enable'])
+        self.assertFalse(params['adaptive_map']['equal_point_count_control_enable'])
+        self.assertFalse(params['adaptive_window']['enable'])
+        self.assertEqual(params['adaptive_window']['persistent_insert_quota_max'], 0)
+
+    def test_historical_e_configs_do_not_inherit_frozen_c_switches(self):
+        config_dir = (ROOT / 'experiments/adaptive_map_v1/validation/subt_hawkins/'
+                      'persistent_quota_v1/config')
+        for name in ('P0_no_total_quota.yaml', 'P1_quota_0p3_2_5.yaml'):
+            with self.subTest(config=name):
+                config = yaml.safe_load(read(config_dir / name))
+                params = config['adaptive_fastlio_mapping']['ros__parameters']
+                self.assertTrue(params['adaptive_map']['directional_selection_enable'])
+                self.assertFalse(params['adaptive_map']['equal_point_count_control_enable'])
+
     def test_invalid_quality_turn_guard_boundary(self):
         insertion = function(self.main, 'void map_incremental()')
         self.assertIn('adaptive_invalid_quality_turn_guard_enable', insertion)

@@ -57,6 +57,8 @@ adaptive_fastlio_mapping:
 
     adaptive_map:
       enable: true                          # 是否启用 idea 模块的退化感知地图更新；false 时尽量保持原 FAST-LIO2 入图行为。
+      directional_selection_enable: true   # 历史E/P0定义：显式保留方向策略，不依赖项目默认值。
+      equal_point_count_control_enable: false
       min_effective_points: 120             # 单帧有效点到面约束数量下限；SubT 16 线数据较稀疏，因此低于默认 200。
       min_range: 0.5                        # 允许入图的最小 LiDAR 量程，过滤过近点和盲区附近不稳定点。
       max_range: 80.0                       # 允许入图的最大 LiDAR 量程，过滤远距离噪声和稀疏弱约束点。
@@ -107,4 +109,3 @@ adaptive_fastlio_mapping:
       csv_enable: true
       csv_append: false
       csv_path: "/home/romi/Adaptive_FAST_LIO2/experiments/subt_mrs_hawkins_long_corridor/results/adaptive_runtime.csv"
-

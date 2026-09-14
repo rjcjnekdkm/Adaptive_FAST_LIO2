@@ -233,7 +233,7 @@ bool adaptive_invalid_quality_low_effective_relax_enable = false;
 bool adaptive_invalid_quality_turn_guard_enable = false;
 // Independent ablation switch for normal-direction bin selection. This does not
 // alter range, residual, quality, invalid-quality or count-control decisions.
-bool adaptive_directional_selection_enable = true;
+bool adaptive_directional_selection_enable = false;
 // F ablation: retain the single-frame range/quality rules, remove normal-direction
 // selection, and apply a fixed count budget only on degenerate frames.
 bool adaptive_equal_point_count_control_enable = false;
@@ -241,7 +241,7 @@ int adaptive_equal_point_count_per_degenerate_frame = 24;
 
 // ===================== 滑动窗口退化判断参数 =====================
 // 是否启用滑动窗口
-bool adaptive_window_enable = true;
+bool adaptive_window_enable = false;
 // 窗口长度 K，即最近 K 次 map_incremental() 的统计量参与动态退化判断。
 int adaptive_window_size = 20;
 // 最近 K 帧中，静态退化帧比例 gamma_t 需要超过该阈值，才可能认为是持续退化。
@@ -2481,12 +2481,12 @@ public:
         this->declare_parameter<bool>("adaptive_map.invalid_quality_filter_enable", true);
         this->declare_parameter<bool>("adaptive_map.invalid_quality_low_effective_relax_enable", false);
         this->declare_parameter<bool>("adaptive_map.invalid_quality_turn_guard_enable", false);
-        this->declare_parameter<bool>("adaptive_map.directional_selection_enable", true);
+        this->declare_parameter<bool>("adaptive_map.directional_selection_enable", false);
         this->declare_parameter<bool>("adaptive_map.equal_point_count_control_enable", false);
         this->declare_parameter<int>("adaptive_map.equal_point_count_per_degenerate_frame", 24);
 
         // 是否启用动态滑动窗口判断；关闭时只使用单帧静态退化判断。
-        this->declare_parameter<bool>("adaptive_window.enable", true);
+        this->declare_parameter<bool>("adaptive_window.enable", false);
         // 窗口长度 K，统计最近 K 次地图更新的退化状态和质量指标。
         this->declare_parameter<int>("adaptive_window.size", 20);
         // 窗口内静态退化帧比例阈值，超过才可能进入持续退化候选。

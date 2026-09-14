@@ -61,7 +61,14 @@ adaptive_fastlio_mapping:
       local_map_delete_enable: true
 
     adaptive_map:
-      enable: false                         # 是否启用 idea 模块的退化感知地图更新；false 时尽量保持原 FAST-LIO2 入图行为。
+      enable: true                          # 默认候选C：启用单帧退化感知质量/量程入图筛选。
+      invalid_quality_filter_enable: true
+      invalid_quality_low_effective_relax_enable: false
+      invalid_quality_turn_guard_enable: false
+      directional_selection_enable: false  # D消融功能；默认候选C关闭。
+      equal_point_count_control_enable: false
+      equal_point_count_per_degenerate_frame: 24
+      transient_novel_quota_enable: false
       min_effective_points: 200             # 单帧有效点到面约束数量下限，低于该值认为当前帧约束不足。
       min_range: 0.5                        # 允许入图的最小 LiDAR 量程，过滤过近点和盲区附近不稳定点。
       max_range: 80.0                       # 允许入图的最大 LiDAR 量程，过滤远距离噪声和稀疏弱约束点。
@@ -77,7 +84,7 @@ adaptive_fastlio_mapping:
       max_novel_points_per_frame: 50        # 退化帧内地图未知区域 novel points 的帧级入图上限。
 
     adaptive_window:
-      enable: true                          # 是否启用动态滑动窗口退化判断；关闭后只保留单帧静态退化判断。
+      enable: false                         # E消融功能；默认候选C关闭，只保留单帧静态退化判断。
       size: 20                              # 窗口长度 K，统计最近 K 次地图更新的退化状态和质量指标。
       persistent_ratio_threshold: 0.6       # 窗口内静态退化帧比例阈值，超过才可能进入持续退化候选。
       normal_ratio_scale: 1.5               # 窗口平均法向特征值比例阈值放大系数：mean(rho) < scale * rho_min。
@@ -90,3 +97,6 @@ adaptive_fastlio_mapping:
       exit_count_threshold: 5               # 连续不满足持续退化候选多少次后退出 Persistent 模式。
       persistent_direction_quota_scale: 0.5 # Persistent 模式下每个法向方向入图配额缩放比例。
       persistent_novel_quota_scale: 0.5     # Persistent 模式下 novel points 入图配额缩放比例。
+      persistent_insert_quota_scale: 1.0
+      persistent_insert_quota_min: 0
+      persistent_insert_quota_max: 0

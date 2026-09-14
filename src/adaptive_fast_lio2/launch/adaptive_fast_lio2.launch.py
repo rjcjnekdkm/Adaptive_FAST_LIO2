@@ -248,8 +248,8 @@ def generate_launch_description():
 
     declare_adaptive_window_enable_cmd = DeclareLaunchArgument(
         "adaptive_window_enable",
-        default_value="true",
-        description="Enable sliding-window persistent-degeneracy state machine"
+        default_value="false",
+        description="Enable experimental sliding-window persistent-degeneracy state machine"
     )
 
     declare_transient_novel_quota_enable_cmd = DeclareLaunchArgument(

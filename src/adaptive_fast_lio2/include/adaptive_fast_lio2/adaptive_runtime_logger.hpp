@@ -110,7 +110,7 @@ struct RuntimeLogRow
     double invalid_quality_turn_guard_yaw_threshold = 0.0;
     int invalid_quality_turn_guard_rejected = 0;
     std::uint64_t total_invalid_quality_turn_guard_rejected = 0;
-    bool directional_selection_enabled = true;
+    bool directional_selection_enabled = false;
     bool directional_selection_active = false;
     bool equal_point_count_control_enabled = false;
     bool equal_point_count_control_active = false;
