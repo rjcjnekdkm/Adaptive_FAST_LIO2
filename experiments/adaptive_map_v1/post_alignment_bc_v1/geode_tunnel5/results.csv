@@ -1,0 +1,11 @@
+event_id,phase,group,run_label,ate_rmse_m,ape_pairs,rows,degenerate_frames,map_update_skipped,map_added,novel_accepted,quality_rejected,invalid_quality_rejected,runtime_sha256,raw_runtime_status,evaluation_path,outcome
+initial_B_run01,initial,B,run01,0.772151,623,2316,0,0,90166,0,0,0,7bd6a8b1842108f04976e3da587ba4674f1041da098a834b83d0cb1ff8f2cff1,current,run01/evaluation_v1,stable
+initial_B_run02,initial,B,run02,0.763688,623,2316,0,0,90518,0,0,0,702a4d65f6d9aa0cdc80328b4df8fe6a1ef27f072da9448ef03cf3423e2794ae,current,run02/evaluation_v1,stable
+initial_B_run03,initial,B,run03,0.763688,623,2316,0,0,90518,0,0,0,702a4d65f6d9aa0cdc80328b4df8fe6a1ef27f072da9448ef03cf3423e2794ae,current,run03/evaluation_v1,stable
+initial_C_run01,initial,C,run01,0.140333,623,2316,112,0,79243,110,20326,197,56a2d623c873ed61fc1a8330467171ee257b8ccf11dffd6cc57d362f81c2ce63,current,run01/evaluation_v1,stable
+initial_C_run02,initial,C,run02,4357.997338,623,2316,986,7,1078335,867174,200205,201819,b9bd2a687d576958ad52ca6c04fde5c70f03d48e8f4f687865f17b1600c247cd,overwritten_evaluation_preserved,run02/evaluation_v1,diverged
+initial_C_run03,initial,C,run03,4357.997338,623,2316,986,7,1078335,867174,200205,201819,b9bd2a687d576958ad52ca6c04fde5c70f03d48e8f4f687865f17b1600c247cd,overwritten_evaluation_preserved,run03/evaluation_v1,diverged
+rerun_C_run02,rerun,C,run02,0.140333,623,2316,112,0,79243,110,20326,197,74725833995b849ccf4d1f803c443d56402e0d9089959758ebce72d4e521b638,current,run02/evaluation_rerun_v1,stable
+rerun_C_run03,rerun,C,run03,0.140333,623,2316,112,0,79243,110,20326,197,74725833995b849ccf4d1f803c443d56402e0d9089959758ebce72d4e521b638,current,run03/evaluation_rerun_v1,stable
+rerun_C_run04,rerun,C,run04,0.140333,623,2316,112,0,79243,110,20326,197,74725833995b849ccf4d1f803c443d56402e0d9089959758ebce72d4e521b638,current,run04/evaluation_rerun_v1,stable
+rerun_C_run05,rerun,C,run05,4357.997338,623,2316,986,7,1078335,867174,200205,201819,b9bd2a687d576958ad52ca6c04fde5c70f03d48e8f4f687865f17b1600c247cd,current,run05/evaluation_rerun_v1,diverged

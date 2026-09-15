@@ -1,0 +1,11 @@
+
+/home/romi/.local/lib/python3.10/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
+  warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
+Traceback (most recent call last):
+  File "/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/frozen_c_regression_v1/B/run01/evaluation_v1/gamma2GT_leica.py", line 6, in <module>
+    from mpl_toolkits.mplot3d import Axes3D
+  File "/usr/lib/python3/dist-packages/mpl_toolkits/mplot3d/__init__.py", line 1, in <module>
+    from .axes3d import Axes3D
+  File "/usr/lib/python3/dist-packages/mpl_toolkits/mplot3d/axes3d.py", line 23, in <module>
+    from matplotlib import _api, cbook, docstring, _preprocess_data
+ImportError: cannot import name 'docstring' from 'matplotlib' (/home/romi/.local/lib/python3.10/site-packages/matplotlib/__init__.py)

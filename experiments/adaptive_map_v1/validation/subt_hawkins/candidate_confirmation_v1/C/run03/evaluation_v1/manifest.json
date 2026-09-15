@@ -1,0 +1,16 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/subt_hawkins/candidate_confirmation_v1/C/run03/runtime.csv",
+  "source_sha256": "48a4ef1f18f673e476482dda661169dcd31d6f884b9da4389b08c5e1c1608d73",
+  "gt": "bag/SubT_MRS/ground_truth_path.csv",
+  "gt_sha256": "e4b6d79ac500d517dbb88c8933df31ca6b0bffb2fdf5e5988456be81f7280b64",
+  "stamp": "lidar_end_time; end-of-scan pose",
+  "method": "C_confirmation",
+  "runtime_source_revision": "0bf0f0211797390595e2c80cd963af86068f3e03",
+  "parameter_snapshot": null,
+  "rows": 2720,
+  "duration_s": 278.3566906452179,
+  "max_gap_s": 0.3025801181793213,
+  "protocol": "SubT evo SE(3) alignment, max_diff=0.1s, offset=0",
+  "time_offset_s": 0,
+  "ate_rmse_m": 2.864914
+}

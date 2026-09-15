@@ -1,0 +1,19 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/subt_hawkins/formal_core_v1/A/run02/runtime.csv",
+  "source_sha256": "5f5fdab1e2b57878267813c7b5379293b28d0344115778590c3c4dd694612793",
+  "gt": "bag/SubT_MRS/ground_truth_path.csv",
+  "gt_sha256": "e4b6d79ac500d517dbb88c8933df31ca6b0bffb2fdf5e5988456be81f7280b64",
+  "stamp": "stamp; end-of-scan pose",
+  "method": "A_fastlio2",
+  "runtime_source_revision": "0bf0f0211797390595e2c80cd963af86068f3e03",
+  "parameter_snapshot": null,
+  "parameter_snapshot_note": "Not saved while the nodes were running; the trajectory time support and frozen configuration are retained.",
+  "configuration": "src/FAST_LIO/config/subt_mrs_hawkins_long_corridor.yaml",
+  "replay": "ros2 bag play SubT_points_ros2 --clock --rate 1.0 --start-offset 1.0",
+  "rows": 2727,
+  "duration_s": 278.3566906452179,
+  "max_gap_s": 0.2041482925415039,
+  "protocol": "SubT evo SE(3) alignment, max_diff=0.1s, offset=0",
+  "time_offset_s": 0,
+  "ate_rmse_m": 13.463294
+}

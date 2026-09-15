@@ -1,0 +1,17 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/subt_hawkins/formal_core_v1/B/run01/runtime.csv",
+  "source_sha256": "a0a6bb374f0e6a08a40b895180ef08c72ade170add268b6b9a9fc1432aa6e351",
+  "gt": "bag/SubT_MRS/ground_truth_path.csv",
+  "gt_sha256": "e4b6d79ac500d517dbb88c8933df31ca6b0bffb2fdf5e5988456be81f7280b64",
+  "stamp": "lidar_end_time; end-of-scan pose",
+  "method": "B_ours_no_adaptive",
+  "runtime_source_revision": "0bf0f0211797390595e2c80cd963af86068f3e03",
+  "parameter_snapshot": "experiments/adaptive_map_v1/validation/subt_hawkins/formal_core_v1/B/run01/params.yaml",
+  "replay": "ros2 bag play SubT_points_ros2 --clock --rate 1.0 --start-offset 1.0",
+  "rows": 2740,
+  "duration_s": 278.4574887752533,
+  "max_gap_s": 0.20172119140625,
+  "protocol": "SubT evo SE(3) alignment, max_diff=0.1s, offset=0",
+  "time_offset_s": 0,
+  "ate_rmse_m": 8.148716
+}

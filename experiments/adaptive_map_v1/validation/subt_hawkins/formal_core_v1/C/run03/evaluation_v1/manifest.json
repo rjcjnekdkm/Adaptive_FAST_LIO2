@@ -1,0 +1,18 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/subt_hawkins/formal_core_v1/C/run03/runtime.csv",
+  "source_sha256": "4b7b9da2a3bcbb07df65e4bc0dd94ba23b87f542902dc2adeeedae438cf9940e",
+  "gt": "bag/SubT_MRS/ground_truth_path.csv",
+  "gt_sha256": "e4b6d79ac500d517dbb88c8933df31ca6b0bffb2fdf5e5988456be81f7280b64",
+  "stamp": "lidar_end_time; end-of-scan pose",
+  "method": "C_quality_only",
+  "runtime_source_revision": "0bf0f0211797390595e2c80cd963af86068f3e03",
+  "parameter_snapshot": null,
+  "parameter_snapshot_note": "Not saved while the node was running; targeted switches are verified from map_diagnostics_v7 runtime columns.",
+  "replay": "ros2 bag play SubT_points_ros2 --clock --rate 1.0 --start-offset 1.0",
+  "rows": 2720,
+  "duration_s": 278.4574887752533,
+  "max_gap_s": 0.2017214298248291,
+  "protocol": "SubT evo SE(3) alignment, max_diff=0.1s, offset=0",
+  "time_offset_s": 0,
+  "ate_rmse_m": 4.921436
+}

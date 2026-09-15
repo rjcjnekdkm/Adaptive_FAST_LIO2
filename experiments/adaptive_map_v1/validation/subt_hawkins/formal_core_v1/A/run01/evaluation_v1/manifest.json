@@ -1,0 +1,19 @@
+{
+  "source": "experiments/adaptive_map_v1/validation/subt_hawkins/formal_core_v1/A/run01/runtime.csv",
+  "source_sha256": "59575a732c3d19993af26c3d0194e6e9420d7a2661bf1447fa7bbc824c3ac27c",
+  "gt": "bag/SubT_MRS/ground_truth_path.csv",
+  "gt_sha256": "e4b6d79ac500d517dbb88c8933df31ca6b0bffb2fdf5e5988456be81f7280b64",
+  "stamp": "stamp; end-of-scan pose",
+  "method": "A_fastlio2",
+  "runtime_source_revision": "0bf0f0211797390595e2c80cd963af86068f3e03",
+  "parameter_snapshot": "experiments/adaptive_map_v1/validation/subt_hawkins/formal_core_v1/A/run01/params_fastlio2.yaml",
+  "recorder_parameter_snapshot": "experiments/adaptive_map_v1/validation/subt_hawkins/formal_core_v1/A/run01/params_recorder.yaml",
+  "configuration": "src/FAST_LIO/config/subt_mrs_hawkins_long_corridor.yaml",
+  "replay": "ros2 bag play SubT_points_ros2 --clock --rate 1.0 --start-offset 1.0",
+  "rows": 2724,
+  "duration_s": 278.3566906452179,
+  "max_gap_s": 0.3025803565979004,
+  "protocol": "SubT evo SE(3) alignment, max_diff=0.1s, offset=0",
+  "time_offset_s": 0,
+  "ate_rmse_m": 7.820619
+}

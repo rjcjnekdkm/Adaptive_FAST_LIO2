@@ -1,0 +1,20 @@
+{
+  "source": "experiments/adaptive_map_v1/generalization/geode_offroad2_v1/B/run02/runtime.csv",
+  "source_sha256": "bd34474ee9a9b68d1c75a03727917ce68753cd347888160b7a1e7e5c756190b0",
+  "gt": "bag/GEODE/offroad/groudtruth/Offroad2.txt",
+  "gt_sha256": "19359f4728348d02366c181932d0b2e2c6b478d302cf309d009f1d4f9875d0e4",
+  "stamp": "lidar_end_time; end-of-scan pose",
+  "method": "B_ours_no_adaptive",
+  "runtime_source_revision": "a561278ebedda2ad360d697a1079f9f60c0cbdd9",
+  "parameter_snapshot": null,
+  "rows": 4212,
+  "duration_s": 421.1033127307892,
+  "max_gap_s": 0.10570216178894043,
+  "protocol": "GEODE original local conversion + rmse.py",
+  "converter_sha256": "258452c5439128d2a375dd7bf8b2b648b7f4550adbfb39a32b981e3604bca01e",
+  "scorer_sha256": "2b0db56c90651512bd1f9f01a1772a2390b89b71f86b676e95f5c1b2ed3e38b5",
+  "time_offset_s": 0.1,
+  "offset_applies_to": "GT (second evo input)",
+  "offset_basis": "previous user-specified protocol; not an official mandated offset",
+  "ate_rmse_m": 0.110601
+}

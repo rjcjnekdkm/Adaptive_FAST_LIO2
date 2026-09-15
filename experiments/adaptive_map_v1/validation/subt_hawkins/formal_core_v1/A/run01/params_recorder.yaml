@@ -1,0 +1,22 @@
+/fastlio_runtime_recorder:
+  ros__parameters:
+    cloud_topic: /cloud_registered
+    csv_append: false
+    csv_path: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/subt_hawkins/formal_core_v1/A/run01/runtime.csv
+    map_topic: /Laser_map
+    odom_topic: /Odometry
+    qos_overrides:
+      /clock:
+        subscription:
+          depth: 1
+          durability: volatile
+          history: keep_last
+          reliability: best_effort
+      /parameter_events:
+        publisher:
+          depth: 1000
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+    use_sim_time: true
+

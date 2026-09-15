@@ -1,0 +1,75 @@
+/laser_mapping:
+  ros__parameters:
+    common:
+      imu_topic: /imu/data
+      lid_topic: /velodyne_points
+      time_offset_lidar_to_imu: 0.0
+      time_sync_en: false
+    cube_side_length: 1000.0
+    feature_extract_enable: false
+    filter_size_corner: 0.5
+    filter_size_map: 0.5
+    filter_size_surf: 0.5
+    map_file_path: ./subt_mrs_hawkins_long_corridor.pcd
+    mapping:
+      acc_cov: 0.1
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
+      det_range: 100.0
+      extrinsic_R:
+      - 0.9992129
+      - -0.000519121
+      - 0.004
+      - 0.000516111
+      - 0.999218492
+      - -0.000939132
+      - -0.004
+      - 0.000802565
+      - 0.999993652
+      extrinsic_T:
+      - 0.08
+      - 0.029
+      - 0.03
+      extrinsic_est_en: false
+      fov_degree: 360.0
+      gyr_cov: 0.1
+    max_iteration: 3
+    pcd_save:
+      interval: -1
+      pcd_save_en: false
+    point_filter_num: 1
+    preprocess:
+      blind: 0.5
+      lidar_type: 2
+      scan_line: 16
+      scan_rate: 10
+      timestamp_unit: 0
+    publish:
+      dense_publish_en: true
+      effect_map_en: false
+      map_en: true
+      path_en: true
+      scan_bodyframe_pub_en: true
+      scan_publish_en: true
+    qos_overrides:
+      /clock:
+        subscription:
+          depth: 1
+          durability: volatile
+          history: keep_last
+          reliability: best_effort
+      /parameter_events:
+        publisher:
+          depth: 1000
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+      /tf:
+        publisher:
+          depth: 100
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+    runtime_pos_log_enable: false
+    use_sim_time: true
+

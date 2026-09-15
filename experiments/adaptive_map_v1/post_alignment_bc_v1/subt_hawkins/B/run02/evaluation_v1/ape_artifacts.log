@@ -1,0 +1,40 @@
+--------------------------------------------------------------------------------
+Loaded 1385 stamps and poses from: ground_truth.tum
+Loaded 2675 stamps and poses from: trajectory_end.tum
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 1346 of max. 1385 possible matching timestamps between...
+	ground_truth.tum
+and:	trajectory_end.tum
+..with max. time diff.: 0.1 (s) and time offset: 0.0 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[ 0.99718595  0.03721856  0.06507654]
+ [-0.03759078  0.99928307  0.00450418]
+ [-0.06486225 -0.00693778  0.99787011]]
+Translation of alignment:
+[-1.23211511e+00  2.37314002e-01  6.81391591e-04]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 1346 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	3.692663
+      mean	1.546383
+    median	1.154599
+       min	0.153902
+      rmse	1.831880
+       sse	4516.886600
+       std	0.982082
+
+--------------------------------------------------------------------------------
+Plotting results... 
+Plot saved to ape_raw.png
+Plot saved to ape_map.png
+--------------------------------------------------------------------------------
+Saving results to ape.zip...
+

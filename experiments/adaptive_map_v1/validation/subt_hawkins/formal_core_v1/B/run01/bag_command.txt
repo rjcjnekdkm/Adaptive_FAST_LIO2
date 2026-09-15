@@ -1,0 +1,1 @@
+ros2 bag play /home/romi/Adaptive_FAST_LIO2/bag/SubT_MRS/SubT_points_ros2 --clock --rate 1.0 --start-offset 1.0

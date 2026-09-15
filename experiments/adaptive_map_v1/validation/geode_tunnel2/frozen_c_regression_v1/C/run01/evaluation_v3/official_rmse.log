@@ -1,0 +1,39 @@
+Command output for /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/frozen_c_regression_v1/C/run01/evaluation_v3/C_frozen.txt:
+--------------------------------------------------------------------------------
+Loaded 2611 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/frozen_c_regression_v1/C/run01/evaluation_v3/C_frozen.txt
+Loaded 618 stamps and poses from: /home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/frozen_c_regression_v1/C/run01/evaluation_v3/ground_truth.txt
+--------------------------------------------------------------------------------
+Synchronizing trajectories...
+Found 618 of max. 618 possible matching timestamps between...
+	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/frozen_c_regression_v1/C/run01/evaluation_v3/C_frozen.txt
+and:	/home/romi/Adaptive_FAST_LIO2/experiments/adaptive_map_v1/validation/geode_tunnel2/frozen_c_regression_v1/C/run01/evaluation_v3/ground_truth.txt
+..with max. time diff.: 0.1 (s) and time offset: 0.1 (s).
+--------------------------------------------------------------------------------
+Aligning using Umeyama's method...
+Rotation of alignment:
+[[-0.66091029  0.75043777  0.00638285]
+ [-0.7498323  -0.66067843  0.03543352]
+ [ 0.03080767  0.01863231  0.99935165]]
+Translation of alignment:
+[-85.91392245 209.0091693  -17.85599444]
+Scale correction: 1.0
+--------------------------------------------------------------------------------
+Compared 618 absolute pose pairs.
+Calculating APE for translation part pose relation...
+--------------------------------------------------------------------------------
+APE w.r.t. translation part (m)
+(with SE(3) Umeyama alignment)
+
+       max	3.603827
+      mean	2.081302
+    median	2.254538
+       min	0.168368
+      rmse	2.215018
+       sse	3032.097211
+       std	0.757951
+
+
+Extracted RMSE: 2.215018
+Average RMSE: 2.215018
+ The minimum min_rmse is 2.215018
+
