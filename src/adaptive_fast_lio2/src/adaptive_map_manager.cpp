@@ -71,18 +71,17 @@ void AdaptiveMapManager::addPoints(
         return;
     }
 
+    addPoints(points_to_add->points, need_downsample);
+}
+
+void AdaptiveMapManager::addPoints(PointVector &points, bool need_downsample)
+{
+    if (points.empty()) return;
+
     if (ikdtree_ == nullptr)
     {
         ikdtree_ = std::make_unique<KD_TREE<PointType>>();
         ikdtree_->set_downsample_param(static_cast<float>(filter_size_map_));
-    }
-
-    KD_TREE<PointType>::PointVector points;
-    points.reserve(points_to_add->size());
-
-    for (const auto &pt : points_to_add->points)
-    {
-        points.push_back(pt);
     }
 
     if (ikdtree_->Root_Node == nullptr)
@@ -100,7 +99,7 @@ void AdaptiveMapManager::addPoints(
 bool AdaptiveMapManager::nearestSearch(
     const PointType &point_world,
     int k,
-    std::vector<PointType> &nearest_points,
+    PointVector &nearest_points,
     std::vector<float> &squared_distances) const
 {
     nearest_points.clear();
@@ -111,20 +110,8 @@ bool AdaptiveMapManager::nearestSearch(
         return false;
     }
 
-    KD_TREE<PointType>::PointVector points_near;
-    std::vector<float> distances;
-
-    ikdtree_->Nearest_Search(point_world, k, points_near, distances);
-
-    if (points_near.empty())
-    {
-        return false;
-    }
-
-    nearest_points.assign(points_near.begin(), points_near.end());
-    squared_distances = distances;
-
-    return true;
+    ikdtree_->Nearest_Search(point_world, k, nearest_points, squared_distances);
+    return !nearest_points.empty();
 }
 
 int AdaptiveMapManager::deletePointBoxes(const std::vector<BoxPointType> &boxes)

@@ -98,7 +98,9 @@ struct RuntimeLogRow
     double map_min_range = 0.0;
     double map_max_range = 0.0;
     int map_min_effective_points = 0;
-    std::string runtime_schema_revision = "map_diagnostics_v7";
+    // v8: enabled flags include the master switch; OFF diagnostics are
+    // uncomputed (zero), not measurements of residual dispersion/conditioning.
+    std::string runtime_schema_revision = "map_diagnostics_v8";
     bool invalid_quality_filter_enabled = true;
     bool invalid_quality_low_effective_relax_enabled = false;
     bool invalid_quality_relax_active = false;

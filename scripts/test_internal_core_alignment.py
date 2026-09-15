@@ -196,7 +196,7 @@ class InternalCoreTests(unittest.TestCase):
         expected = function(read(REF / 'include/common_lib.h'), 'bool esti_plane(')
         expected = expected.replace(
             'bool esti_plane(Matrix<T, 4, 1> &pca_result, const PointVector &point, const T &threshold)',
-            'bool estimate_plane_from_neighbors(const std::vector<PointType> &point, Eigen::Vector4f &pca_result)')
+            'bool estimate_plane_from_neighbors(const MapPointVector &point, Eigen::Vector4f &pca_result)')
         expected = expected.replace('NUM_MATCH_POINTS', '5').replace('Matrix<T,', 'Eigen::Matrix<float,')
         expected = expected.replace('T n =', 'float n =').replace('> threshold', '> 0.1f')
         self.assertEqual(normalized(expected), normalized(function(self.main, 'bool estimate_plane_from_neighbors(')))
@@ -235,7 +235,12 @@ class InternalCoreTests(unittest.TestCase):
         timer = function(self.main, 'void timer_callback()')
         self.assertNotIn('adaptive_map_enable', timer)
         matcher = function(self.main, 'void h_share_model(')
-        self.assertNotIn('adaptive_map_enable', matcher)
+        # Adaptive may collect diagnostics, but must not alter measurement
+        # construction. OFF must bypass the expensive diagnostic branches.
+        svd = function(matcher, 'if (adaptive_map_enable && effct_feat_num > 0)')
+        self.assertIn('Eigen::JacobiSVD', svd)
+        self.assertNotIn('ekfom_data.h_x =', svd)
+        self.assertNotIn('ekfom_data.h(i) =', svd)
         self.assertIn('const float residual =', matcher)
         self.assertIn('const float score =', matcher)
         self.assertIn('if (!(score > 0.9)) continue;', matcher)
@@ -258,6 +263,54 @@ class InternalCoreTests(unittest.TestCase):
         self.assertRegex(allowance, r'if\s*\(!adaptive_map_enable\)\s*\{\s*return true;')
         self.assertIn('p_map->addPoints(point_to_add, true);', insertion)
         self.assertIn('p_map->addPoints(point_no_need_downsample, false);', insertion)
+
+    def test_off_observation_path_excludes_adaptive_statistics(self):
+        matcher = function(self.main, 'void h_share_model(')
+        # Inspect the reachable OFF path by removing master-enabled blocks.
+        svd = function(matcher, 'if (adaptive_map_enable && effct_feat_num > 0)')
+        matcher = matcher.replace(svd, '')
+        while 'if (adaptive_map_enable)\n    {' in matcher:
+            branch = function(matcher, 'if (adaptive_map_enable)\n    {')
+            matcher = matcher.replace(branch, '', 1)
+        # Nested braced blocks have different indentation.
+        matcher = re.sub(
+            r'if \(adaptive_map_enable\)\s*\{[^{}]*\}', '', matcher)
+        for operation in ('median_of_values(', 'Eigen::JacobiSVD',
+                          'map_point_effective.assign(', 'map_point_effective[i] =',
+                          'effective_residuals.push_back('):
+            self.assertNotIn(operation, matcher)
+        self.assertIn('ekfom_data.h_x =', matcher)
+        self.assertIn('ekfom_data.h(i) = -norm_p.intensity;', matcher)
+        self.assertIn('if (!(score > 0.9)) continue;', matcher)
+
+    def test_mapping_visualization_does_not_traverse_live_tree(self):
+        self.assertNotIn('getMapCloud(', self.main)
+        self.assertNotIn('pub_ikdtree_map_', self.main)
+        timer = function(self.main, 'void timer_callback()')
+        self.assertNotIn('publish_map(', timer)
+        self.assertIn('std::chrono::milliseconds(1000)', self.main)
+
+    def test_map_wrapper_preserves_native_point_container(self):
+        manager = read(OURS / 'src/adaptive_map_manager.cpp')
+        header = read(OURS / 'include/adaptive_fast_lio2/adaptive_map_manager.hpp')
+        self.assertIn('using PointVector = KD_TREE<PointType>::PointVector;', header)
+        search = function(manager, 'bool AdaptiveMapManager::nearestSearch(')
+        self.assertIn('Nearest_Search(point_world, k, nearest_points, squared_distances)', search)
+        self.assertNotIn('.assign(', search)
+        insertion = function(manager, 'void AdaptiveMapManager::addPoints(PointVector &points')
+        self.assertIn('ikdtree_->Build(points)', insertion)
+        self.assertIn('ikdtree_->Add_Points(points, need_downsample)', insertion)
+
+    def test_publication_alignment_and_current_covariance(self):
+        body = function(self.main, 'void publish_current_cloud_body(')
+        self.assertIn('!scan_publish_en || !scan_bodyframe_pub_en', body)
+        path = function(self.main, 'void publish_path(')
+        self.assertIn('if (!path_publish_en) return;', path)
+        self.assertIn('++path_count % 10 != 0', path)
+        odom = function(self.main, 'void publish_odometry(')
+        self.assertIn('state_point.rot.coeffs()', odom)
+        self.assertLess(odom.index('odom.pose.covariance[i * 6 + j]'),
+                        odom.index('pub_odom_->publish(odom)'))
 
     def test_current_configs_do_not_select_legacy_core(self):
         for config in (OURS / 'config').glob('*.yaml'):

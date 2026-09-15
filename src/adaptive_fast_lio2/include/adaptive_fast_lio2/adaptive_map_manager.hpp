@@ -10,6 +10,7 @@
 class AdaptiveMapManager
 {
 public:
+    using PointVector = KD_TREE<PointType>::PointVector;
     AdaptiveMapManager();
 
     // 设置 ikd-tree 增量下采样使用的地图体素边长，单位：米。
@@ -30,12 +31,13 @@ public:
     void addPoints(
         const PointCloudXYZI::Ptr &points_to_add,
         bool need_downsample);
+    void addPoints(PointVector &points, bool need_downsample);
 
     // 在世界坐标系地图中搜索 k 个近邻点，并返回平方距离。
     bool nearestSearch(
         const PointType &point_world,
         int k,
-        std::vector<PointType> &nearest_points,
+        PointVector &nearest_points,
         std::vector<float> &squared_distances) const;
 
     // 删除给定轴对齐包围盒内的地图点，供局部地图滑窗管理使用。

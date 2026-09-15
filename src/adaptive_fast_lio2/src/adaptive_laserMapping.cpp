@@ -138,6 +138,7 @@ bool feature_extract_enable = false;
 
 // 点云发布控制：世界系点云、稠密点云、LiDAR/body 系点云。
 bool scan_publish_en = true;
+bool path_publish_en = true;
 bool dense_publish_en = true;
 bool scan_bodyframe_pub_en = true;
 // 是否发布官方风格的累计显示地图 /Laser_map。
@@ -189,7 +190,6 @@ double filter_size_map = 0.5;
 // 地图发布计数
 int map_update_count = 0;
 // /Laser_map 发布节流计数；独立于地图是否成功插入，避免更新失败时重复累计同一帧。
-int map_publish_frame_count = 0;
 // 与官方 FAST-LIO2 的 pcl_wait_pub 一致，仅用于累计发布 /Laser_map。
 PointCloudXYZI::Ptr pcl_wait_pub(new PointCloudXYZI());
 
@@ -342,7 +342,10 @@ std::vector<uint8_t> map_point_has_local_neighbors;
 
 // 与官方 FAST-LIO2 的 Nearest_Points 和 point_selected_surf 对应。
 // IKFoM 未收敛时复用最近一次近邻搜索结果，仅重新计算平面残差和雅可比。
-std::vector<std::vector<PointType>> nearest_points_cache;
+using MapPointVector = AdaptiveMapManager::PointVector;
+std::vector<MapPointVector> nearest_points_cache;
+MapPointVector observation_normals;
+pcl::VoxelGrid<PointType> scan_voxel_filter;
 std::vector<uint8_t> point_selected_surf;
 
 
@@ -809,7 +812,7 @@ Eigen::Matrix3d skewSymmetric(const Eigen::Vector3d &v)
  *   这里不是从当前帧中提边缘点/平面点。
  *   这是 FAST-LIO2 direct scan-to-map 中，为了构造点到局部地图平面的残差而做的局部平面估计。
  */
-bool estimate_plane_from_neighbors(const std::vector<PointType> &point, Eigen::Vector4f &pca_result)
+bool estimate_plane_from_neighbors(const MapPointVector &point, Eigen::Vector4f &pca_result)
 {
     Eigen::Matrix<float, 5, 3> A;
     Eigen::Matrix<float, 5, 1> b;
@@ -857,15 +860,14 @@ void downsample_current_scan(const PointCloudXYZI::Ptr &cloud_in)
         return;
     }
 
-    pcl::VoxelGrid<PointType> voxel_filter;
-    voxel_filter.setInputCloud(cloud_in);
-    voxel_filter.setLeafSize(
+    scan_voxel_filter.setInputCloud(cloud_in);
+    scan_voxel_filter.setLeafSize(
         static_cast<float>(filter_size_surf),
         static_cast<float>(filter_size_surf),
         static_cast<float>(filter_size_surf)
     );
 
-    voxel_filter.filter(*feats_down_body);
+    scan_voxel_filter.filter(*feats_down_body);
 }
 
 /**
@@ -1262,28 +1264,28 @@ void write_runtime_log_row(
     row.map_min_range = adaptive_min_range;
     row.map_max_range = adaptive_max_range;
     row.map_min_effective_points = scan_match_min_effective_points;
-    row.invalid_quality_filter_enabled = adaptive_invalid_quality_filter_enable;
+    row.invalid_quality_filter_enabled = adaptive_map_enable && adaptive_invalid_quality_filter_enable;
     row.invalid_quality_low_effective_relax_enabled =
-        adaptive_invalid_quality_low_effective_relax_enable;
+        adaptive_map_enable && adaptive_invalid_quality_low_effective_relax_enable;
     row.invalid_quality_relax_active = invalid_quality_relax_active;
     row.invalid_quality_relax_effective_threshold = adaptive_min_effective_points;
     row.invalid_quality_relaxed = invalid_quality_relaxed_num;
     row.total_invalid_quality_relaxed = total_invalid_quality_relaxed;
     row.invalid_quality_turn_guard_enabled =
-        adaptive_invalid_quality_turn_guard_enable;
+        adaptive_map_enable && adaptive_invalid_quality_turn_guard_enable;
     row.invalid_quality_turn_guard_active = invalid_quality_turn_guard_active;
     row.invalid_quality_turn_guard_yaw_threshold = adaptive_window_max_yaw_change;
     row.invalid_quality_turn_guard_rejected =
         invalid_quality_turn_guard_rejected_num;
     row.total_invalid_quality_turn_guard_rejected =
         total_invalid_quality_turn_guard_rejected;
-    row.directional_selection_enabled = adaptive_directional_selection_enable;
+    row.directional_selection_enabled = adaptive_map_enable && adaptive_directional_selection_enable;
     row.directional_selection_active =
         adaptive_map_enable && frame_degenerate &&
         adaptive_directional_selection_enable &&
         !equal_point_count_control_active;
     row.equal_point_count_control_enabled =
-        adaptive_equal_point_count_control_enable;
+        adaptive_map_enable && adaptive_equal_point_count_control_enable;
     row.equal_point_count_control_active = equal_point_count_control_active;
     row.equal_point_count_target = equal_point_count_target;
     row.equal_point_count_rejected = equal_point_count_rejected_num;
@@ -1306,12 +1308,10 @@ void write_runtime_log_row(
     row.pos_x = state_point.pos.x();
     row.pos_y = state_point.pos.y();
     row.pos_z = state_point.pos.z();
-    const Eigen::Quaterniond orientation(state_point.rot.toRotationMatrix());
-    const Eigen::Quaterniond normalized_orientation = orientation.normalized();
-    row.quat_x = normalized_orientation.x();
-    row.quat_y = normalized_orientation.y();
-    row.quat_z = normalized_orientation.z();
-    row.quat_w = normalized_orientation.w();
+    row.quat_x = state_point.rot.coeffs()[0];
+    row.quat_y = state_point.rot.coeffs()[1];
+    row.quat_z = state_point.rot.coeffs()[2];
+    row.quat_w = state_point.rot.coeffs()[3];
     row.downsampled_points = downsampled_points;
     row.effective_points = effct_feat_num;
     row.effective_ratio = downsampled_points > 0
@@ -1581,7 +1581,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
     effective_point_indices.clear();
     frame_residual_median = 0.0;
     frame_residual_mad = 0.0;
-    frame_condition_number = 1.0;
+    frame_condition_number = adaptive_map_enable ? 1.0 : 0.0;
     frame_weak_direction.setZero();
 
     if (feats_down_body == nullptr || feats_down_body->empty())
@@ -1590,14 +1590,17 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         return;
     }
 
-    map_point_effective.assign(feats_down_body->size(), 0);
-    map_point_residual_abs.assign(feats_down_body->size(), 0.0);
-    map_point_quality_score.assign(feats_down_body->size(), 0.0);
-    map_point_normal.assign(feats_down_body->size(), Eigen::Vector3d::Zero());
-    map_point_weak_direction_score.assign(feats_down_body->size(), 0.0);
-    if (map_point_has_local_neighbors.size() != feats_down_body->size())
+    if (adaptive_map_enable)
     {
-        map_point_has_local_neighbors.assign(feats_down_body->size(), 0);
+        map_point_effective.assign(feats_down_body->size(), 0);
+        map_point_residual_abs.assign(feats_down_body->size(), 0.0);
+        map_point_quality_score.assign(feats_down_body->size(), 0.0);
+        map_point_normal.assign(feats_down_body->size(), Eigen::Vector3d::Zero());
+        map_point_weak_direction_score.assign(feats_down_body->size(), 0.0);
+        if (map_point_has_local_neighbors.size() != feats_down_body->size())
+        {
+            map_point_has_local_neighbors.assign(feats_down_body->size(), 0);
+        }
     }
 
     feats_down_world->clear();
@@ -1613,8 +1616,8 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
 
     double residual_sum = 0.0;
     std::vector<double> effective_residuals;
-    effective_residuals.reserve(feats_down_body->size());
-    std::vector<PointType> observation_normals(feats_down_body->size());
+    if (adaptive_map_enable) effective_residuals.reserve(feats_down_body->size());
+    observation_normals.resize(feats_down_body->size());
 
 #ifdef MP_EN
     omp_set_num_threads(MP_PROC_NUM);
@@ -1638,7 +1641,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         point_world.z = static_cast<float>(p_world_eigen.z());
         feats_down_world->points[i] = point_world;
 
-        std::vector<PointType> &nearest_points = nearest_points_cache[i];
+        MapPointVector &nearest_points = nearest_points_cache[i];
 
         if (ekfom_data.converge)
         {
@@ -1655,8 +1658,8 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
                 nearest_points.size() >= static_cast<size_t>(nearest_search_num) &&
                 !squared_distances.empty() &&
                 squared_distances.back() <= nearest_sq_dist_threshold;
-            map_point_has_local_neighbors[i] =
-                point_selected_surf[i] != 0;
+            if (adaptive_map_enable)
+                map_point_has_local_neighbors[i] = point_selected_surf[i] != 0;
         }
 
         if (point_selected_surf[i] == 0)
@@ -1674,10 +1677,13 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         const Eigen::Vector3d plane_normal = pabcd.head<3>().cast<double>();
 
         point_selected_surf[i] = 1;
-        map_point_effective[i] = 1;
-        map_point_residual_abs[i] = std::abs(residual);
-        map_point_quality_score[i] = score;
-        map_point_normal[i] = plane_normal;
+        if (adaptive_map_enable)
+        {
+            map_point_effective[i] = 1;
+            map_point_residual_abs[i] = std::abs(residual);
+            map_point_quality_score[i] = score;
+            map_point_normal[i] = plane_normal;
+        }
 
         PointType normal_residual;
         normal_residual.x = static_cast<float>(plane_normal.x());
@@ -1695,10 +1701,12 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         const float residual = observation_normals[i].intensity;
         laserCloudOri->push_back(feats_down_body->points[i]);
         corr_normvect->push_back(observation_normals[i]);
-        effective_point_indices.push_back(i);
-
         residual_sum += std::abs(residual);
-        effective_residuals.push_back(std::abs(residual));
+        if (adaptive_map_enable)
+        {
+            effective_point_indices.push_back(i);
+            effective_residuals.push_back(std::abs(residual));
+        }
         effct_feat_num++;
     }
 
@@ -1711,16 +1719,19 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
 
     res_mean_last =
         residual_sum / static_cast<double>(effct_feat_num);
-    frame_residual_median = median_of_values(effective_residuals);
-
-    std::vector<double> residual_deviations;
-    residual_deviations.reserve(effective_residuals.size());
-    for (const double residual : effective_residuals)
+    if (adaptive_map_enable)
     {
-        residual_deviations.push_back(
-            std::abs(residual - frame_residual_median));
+        frame_residual_median = median_of_values(effective_residuals);
+
+        std::vector<double> residual_deviations;
+        residual_deviations.reserve(effective_residuals.size());
+        for (const double residual : effective_residuals)
+        {
+            residual_deviations.push_back(
+                std::abs(residual - frame_residual_median));
+        }
+        frame_residual_mad = median_of_values(residual_deviations);
     }
-    frame_residual_mad = median_of_values(residual_deviations);
 
     ekfom_data.valid = true;
     // h_x 是点到面观测对状态的雅可比；h 是取负后的残差观测向量。
@@ -1791,7 +1802,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
     // 条件数越大，说明当前点到面约束越病态，存在更明显的弱约束方向。
     // 同时取最小奇异值对应的右奇异向量作为 weak direction，
     // 后续 Persistent 模式下优先保留对该弱方向有贡献的点。
-    if (effct_feat_num > 0)
+    if (adaptive_map_enable && effct_feat_num > 0)
     {
         const Eigen::MatrixXd h_pose =
             ekfom_data.h_x.block(0, 0, effct_feat_num, 6);
@@ -1990,11 +2001,11 @@ void map_incremental()
     feats_down_world->clear();
     feats_down_world->resize(feats_down_body->size());
 
-    PointCloudXYZI::Ptr point_to_add(new PointCloudXYZI());
-    PointCloudXYZI::Ptr point_no_need_downsample(new PointCloudXYZI());
+    MapPointVector point_to_add;
+    MapPointVector point_no_need_downsample;
 
-    point_to_add->reserve(feats_down_body->size());
-    point_no_need_downsample->reserve(feats_down_body->size());
+    point_to_add.reserve(feats_down_body->size());
+    point_no_need_downsample.reserve(feats_down_body->size());
 
     // idea 模块入口：
     //   1. 先做当前帧静态退化判断，得到 frame_degenerate；
@@ -2058,10 +2069,11 @@ void map_incremental()
             std::max(adaptive_window_persistent_insert_quota_min, scaled_quota));
     }
 
-    std::vector<size_t> candidate_indices(feats_down_body->size());
-    std::iota(candidate_indices.begin(), candidate_indices.end(), 0);
+    std::vector<size_t> candidate_indices;
     if (adaptive_map_enable && frame_degenerate)
     {
+        candidate_indices.resize(feats_down_body->size());
+        std::iota(candidate_indices.begin(), candidate_indices.end(), 0);
         // 退化帧存在方向配额时先排序，避免最终保留结果依赖 VoxelGrid 输出顺序。
         //
         // Transient 模式：优先保留高质量点；
@@ -2108,8 +2120,9 @@ void map_incremental()
             });
     }
 
-    for(const size_t i : candidate_indices)
+    for (size_t index = 0; index < feats_down_body->size(); ++index)
     {
+        const size_t i = candidate_indices.empty() ? index : candidate_indices[index];
         const PointType &point_body = feats_down_body->points[i];
 
         PointType point_world;
@@ -2121,7 +2134,7 @@ void map_incremental()
         bool no_need_downsample = false;
 
         // 与官方 map_incremental() 一致，复用 h_share_model() 最终迭代得到的近邻。
-        const std::vector<PointType> *nearest_points = nullptr;
+        const MapPointVector *nearest_points = nullptr;
         if (i < nearest_points_cache.size() &&
             !nearest_points_cache[i].empty())
         {
@@ -2223,11 +2236,11 @@ void map_incremental()
 
         if (no_need_downsample)
         {
-            point_no_need_downsample->push_back(point_world);
+            point_no_need_downsample.push_back(point_world);
         }
         else
         {
-            point_to_add->push_back(point_world);
+            point_to_add.push_back(point_world);
         }
     }
 
@@ -2235,8 +2248,8 @@ void map_incremental()
     p_map->addPoints(point_no_need_downsample, false);
 
     const size_t add_num =
-        point_to_add->size() +
-        point_no_need_downsample->size();
+        point_to_add.size() +
+        point_no_need_downsample.size();
 
     map_update_count++;
     last_map_add_num = add_num;
@@ -2255,8 +2268,8 @@ void map_incremental()
     write_runtime_log_row(
         frame_degenerate,
         add_num,
-        point_to_add->size(),
-        point_no_need_downsample->size(),
+        point_to_add.size(),
+        point_no_need_downsample.size(),
         quality_rejected_num,
         invalid_quality_rejected_num,
         direction_rejected_num,
@@ -2397,6 +2410,7 @@ public:
         this->declare_parameter<int>("point_filter_num", 3);
         this->declare_parameter<bool>("feature_extract_enable", false);
         this->declare_parameter<bool>("publish.scan_publish_en", true);
+        this->declare_parameter<bool>("publish.path_en", true);
         this->declare_parameter<bool>("publish.dense_publish_en", true);
         this->declare_parameter<bool>("publish.scan_bodyframe_pub_en", true);
         this->declare_parameter<bool>("publish.map_en", false);
@@ -2532,6 +2546,7 @@ public:
         this->get_parameter("point_filter_num", p_pre->point_filter_num);
         this->get_parameter("feature_extract_enable", p_pre->feature_enabled);
         this->get_parameter("publish.scan_publish_en", scan_publish_en);
+        this->get_parameter("publish.path_en", path_publish_en);
         this->get_parameter("publish.dense_publish_en", dense_publish_en);
         this->get_parameter("publish.scan_bodyframe_pub_en", scan_bodyframe_pub_en);
         this->get_parameter("publish.map_en", map_publish_en);
@@ -2778,17 +2793,16 @@ public:
         sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(imu_topic, 10, imu_cbk);
 
 
-        pub_cloud_body_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body",10);
-        pub_odom_ = this->create_publisher<nav_msgs::msg::Odometry>("/Odometry",10);
-        pub_path_ = this->create_publisher<nav_msgs::msg::Path>("/path",10);
+        pub_cloud_body_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body",20);
+        pub_odom_ = this->create_publisher<nav_msgs::msg::Odometry>("/Odometry",20);
+        pub_path_ = this->create_publisher<nav_msgs::msg::Path>("/path",20);
         path_.header.frame_id = "camera_init";
-        pub_cloud_world_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered",10);
-        pub_map_ =this->create_publisher<sensor_msgs::msg::PointCloud2>("/Laser_map",10);
-        pub_ikdtree_map_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/ikdtree_map", 10);
+        pub_cloud_world_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered",20);
+        pub_map_ =this->create_publisher<sensor_msgs::msg::PointCloud2>("/Laser_map",20);
         pub_degeneracy_info_ =
             this->create_publisher<std_msgs::msg::Float64MultiArray>("/adaptive_frontend/degeneracy_info", 10);
 
-        std::cout << "Publish topics: /cloud_registered_body, /cloud_registered, /Laser_map, /ikdtree_map, /Odometry, /path, /adaptive_frontend/degeneracy_info" << std::endl;
+        std::cout << "Publish topics: /cloud_registered_body, /cloud_registered, /Laser_map, /Odometry, /path, /adaptive_frontend/degeneracy_info" << std::endl;
 
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
@@ -2799,6 +2813,8 @@ public:
                 std::bind(
                     &AdaptiveLaserMappingNode::timer_callback,
                     this));
+        map_timer_ = rclcpp::create_timer(this, this->get_clock(),
+            std::chrono::milliseconds(1000), [this]() { publish_map(Measures); });
 
         std::cout << "Adaptive FAST-LIO2 data input initialized." << std::endl;
 
@@ -2822,13 +2838,12 @@ private:
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_path_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_cloud_world_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_map_;
-    // 实际用于最近邻匹配的 ikd-tree 有效地图，与累计显示用 /Laser_map 区分。
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_ikdtree_map_;
     // 前端退化先验输出，供后端关键帧选择、回环验证和图优化加权使用。
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_degeneracy_info_;
 
     // 周期触发同步、状态传播、scan-to-map 和地图更新的主定时器。
     rclcpp::TimerBase::SharedPtr main_timer_;
+    rclcpp::TimerBase::SharedPtr map_timer_;
 
     // 累积发布的位姿轨迹，坐标系固定为 camera_init。
     nav_msgs::msg::Path path_;
@@ -2904,12 +2919,11 @@ private:
 
         // 4、发布结果
         // 发布当前帧点云
-        publish_current_cloud_body(Measures);
+        publish_path(Measures);
         // 发布当前帧全局点云
         publish_current_cloud_world(Measures);
-        publish_map(Measures);
+        publish_current_cloud_body(Measures);
         // 发布 IMU 预测的 odometry 和 path
-        publish_path(Measures);
         publish_degeneracy_info(Measures);
     }
 
@@ -2935,7 +2949,7 @@ private:
      */
     void publish_degeneracy_info(const MeasureGroup &meas)
     {
-        if (!pub_degeneracy_info_)
+        if (!pub_degeneracy_info_ || pub_degeneracy_info_->get_subscription_count() == 0)
         {
             return;
         }
@@ -2970,7 +2984,7 @@ private:
     // 发布当前帧点云
     void publish_current_cloud_body(const MeasureGroup &meas)
     {
-        if(!scan_bodyframe_pub_en)
+        if(!scan_publish_en || !scan_bodyframe_pub_en)
         {
             return;
         }
@@ -3033,20 +3047,34 @@ private:
         odom.pose.pose.position.y = state_point.pos.y();
         odom.pose.pose.position.z = state_point.pos.z();
 
-        Eigen::Quaterniond q(state_point.rot.toRotationMatrix());
-        q.normalize();
+        const Eigen::Quaterniond q(state_point.rot.coeffs());
 
         odom.pose.pose.orientation.x = q.x();
         odom.pose.pose.orientation.y = q.y();
         odom.pose.pose.orientation.z = q.z();
         odom.pose.pose.orientation.w = q.w();
 
+        // Populate covariance before publication (reference publishes first,
+        // which exposes the previous covariance). Keep the corrected behavior.
+        const auto covariance = kf.get_P();
+        for (int i = 0; i < 6; ++i)
+        {
+            const int row = i < 3 ? i + 3 : i - 3;
+            for (int j = 0; j < 6; ++j)
+            {
+                const int col = j < 3 ? j + 3 : j - 3;
+                odom.pose.covariance[i * 6 + j] = covariance(row, col);
+            }
+        }
         pub_odom_->publish(odom);
     }
 
     //发布Path
     void publish_path(const MeasureGroup &meas)
     {
+        if (!path_publish_en) return;
+        static int path_count = 0;
+        if (++path_count % 10 != 0) return;
         geometry_msgs::msg::PoseStamped pose;
         // Path 与 Odometry/关键帧点云采用同一帧末时刻，便于轨迹记录和后端同步。
         pose.header.stamp = get_ros_time(meas.lidar_end_time);
@@ -3056,8 +3084,7 @@ private:
         pose.pose.position.y = state_point.pos.y();
         pose.pose.position.z = state_point.pos.z();
 
-        Eigen::Quaterniond q(state_point.rot.toRotationMatrix());
-        q.normalize();
+        const Eigen::Quaterniond q(state_point.rot.coeffs());
 
         pose.pose.orientation.x = q.x();
         pose.pose.orientation.y = q.y();
@@ -3119,13 +3146,8 @@ private:
     // 发布地图
     void publish_map(const MeasureGroup &meas)
     {
-        // 约每秒发布一次地图；/Laser_map 服从官方 map_en，/ikdtree_map 始终用于诊断。
-        constexpr int map_publish_interval_frames = 10;
-        map_publish_frame_count++;
-        if (map_publish_frame_count % map_publish_interval_frames != 0)
-        {
-            return;
-        }
+        // Match FAST-LIO2's one-second ROS timer; never flatten the live tree
+        // for visualization. RViz only consumes the accumulated scan map.
 
         if (map_publish_en)
         {
@@ -3153,15 +3175,6 @@ private:
             }
         }
 
-        PointCloudXYZI::Ptr ikdtree_map = p_map->getMapCloud();
-        if (ikdtree_map != nullptr && !ikdtree_map->empty())
-        {
-            sensor_msgs::msg::PointCloud2 ikdtree_map_msg;
-            pcl::toROSMsg(*ikdtree_map, ikdtree_map_msg);
-            ikdtree_map_msg.header.stamp = get_ros_time(meas.lidar_end_time);
-            ikdtree_map_msg.header.frame_id = "camera_init";
-            pub_ikdtree_map_->publish(ikdtree_map_msg);
-        }
     }
 
     void publish_tf(const MeasureGroup &meas)
@@ -3176,8 +3189,7 @@ private:
         transform.transform.translation.y = state_point.pos.y();
         transform.transform.translation.z = state_point.pos.z();
 
-        Eigen::Quaterniond q(state_point.rot.toRotationMatrix());
-        q.normalize();
+        const Eigen::Quaterniond q(state_point.rot.coeffs());
 
         transform.transform.rotation.x = q.x();
         transform.transform.rotation.y = q.y();
